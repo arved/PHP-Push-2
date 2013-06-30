@@ -226,7 +226,11 @@
     // example: dovecot.sieve|archive|spam
     define('IMAP_EXCLUDED_FOLDERS', '');
     /* END fmbiete's contribution r1527, ZP-319 */
-
+    // for 3rd party email providers
+    // to append a string to the username which can be useful if, for example the 3rd party imap 
+    // loginname is the email address and your CalDAV / CardDAV backend can't handle usernames formated as emailadresses
+    // so for login the domainpart of the email address will be added.
+    define ('IMAP_USERNAMEEXTENSION', '');
 
     // ************************
     //  BackendMaildir settings
