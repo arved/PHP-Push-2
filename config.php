@@ -55,12 +55,22 @@
 
     //Max size of attachments to display inline. Default is 2 MB
     define('MAX_EMBEDDED_SIZE', 2097152);
+    define('USE_SHARED_MEM', false);
 
 
 /**********************************************************************************
  *  Default FileStateMachine settings
  */
-    define('STATE_DIR', '/var/lib/z-push/');
+    define('STATE_DIR', '/share/HDA_DATA/var/lib/z-push/');
+
+
+// needed for carddav on qnap
+  ini_set('include_path',
+   BASE_PATH. "include/" . PATH_SEPARATOR .
+   BASE_PATH. PATH_SEPARATOR .
+   ini_get('include_path') . PATH_SEPARATOR .
+   "/usr/share/php/" . PATH_SEPARATOR .
+   "/usr/share/awl/inc");
 
 
 /**********************************************************************************
@@ -80,11 +90,11 @@
  *  ones, e.g. setting to LOGLEVEL_DEBUG will also output LOGLEVEL_FATAL, LOGLEVEL_ERROR,
  *  LOGLEVEL_WARN and LOGLEVEL_INFO level entries.
  */
-    define('LOGFILEDIR', '/var/log/z-push/');
+    define('LOGFILEDIR', '/share/HDA_DATA/var/log/z-push/');
     define('LOGFILE', LOGFILEDIR . 'z-push.log');
     define('LOGERRORFILE', LOGFILEDIR . 'z-push-error.log');
-    define('LOGLEVEL', LOGLEVEL_DEBUG);
-    define('LOGAUTHFAIL', true);
+    define('LOGLEVEL', LOGLEVEL_WBXMLSTACK);
+    define('LOGAUTHFAIL', false);
 
 
     // To save e.g. WBXML data only for selected users, add the usernames to the array
@@ -191,34 +201,36 @@
  *  Backend settings
  */
     // The data providers that we are using (see configuration below)
-    define('BACKEND_PROVIDER', "BackendZarafa");
-
-
-    // ************************
-    //  BackendZarafa settings
-    // ************************
-    // Defines the server to which we want to connect
-    define('MAPI_SERVER', 'file:///var/run/zarafa');
+    define('BACKEND_PROVIDER', "BackendCombined");
+    //define('BACKEND_PROVIDER', "BackendCombined");
 
 
     // ************************
     //  BackendIMAP settings
     // ************************
     // Defines the server to which we want to connect
-    define('IMAP_SERVER', 'localhost');
+    define('IMAP_SERVER', 'imap.youmailhoster.de');
     // connecting to default port (143)
-    define('IMAP_PORT', 143);
+    define('IMAP_PORT', 993);
     // best cross-platform compatibility (see http://php.net/imap_open for options)
-    define('IMAP_OPTIONS', '/notls/norsh');
+    //define('IMAP_OPTIONS', '/notls/norsh');
+    define('IMAP_OPTIONS', '/ssl/notls/norsh/novalidate-cert');
     // overwrite the "from" header if it isn't set when sending emails
     // options: 'username'    - the username will be set (usefull if your login is equal to your emailaddress)
     //        'domain'    - the value of the "domain" field is used
     //        '@mydomain.com' - the username is used and the given string will be appended
     define('IMAP_DEFAULTFROM', '');
+    // for 3rd party email providers
+    // to append a string to the username which can be useful if, for example the 3rd party imap 
+    // loginname is the email address and your CalDAV / CardDAV backend can't handle usernames formated as emailadresses
+    // so for login the domainpart of the email address will be added.
+    // this has to be reflected in backend/imap.php
+    // define ('IMAP_USERNAMEEXTENSION', '@yourdomain.me');
+    define ('IMAP_USERNAMEEXTENSION', '');
     // copy outgoing mail to this folder. If not set z-push will try the default folders
     define('IMAP_SENTFOLDER', '');
     // forward messages inline (default false - as attachment)
-    define('IMAP_INLINE_FORWARD', false);
+    define('IMAP_INLINE_FORWARD', true);
     // use imap_mail() to send emails (default) - if false mail() is used
     define('IMAP_USE_IMAPMAIL', true);
     /* BEGIN fmbiete's contribution r1527, ZP-319 */
@@ -226,38 +238,47 @@
     // example: dovecot.sieve|archive|spam
     define('IMAP_EXCLUDED_FOLDERS', '');
     /* END fmbiete's contribution r1527, ZP-319 */
-    // for 3rd party email providers
-    // to append a string to the username which can be useful if, for example the 3rd party imap 
-    // loginname is the email address and your CalDAV / CardDAV backend can't handle usernames formated as emailadresses
-    // so for login the domainpart of the email address will be added.
-    define ('IMAP_USERNAMEEXTENSION', '');
 
-    // ************************
-    //  BackendMaildir settings
-    // ************************
-    define('MAILDIR_BASE', '/tmp');
-    define('MAILDIR_SUBDIR', 'Maildir');
 
-    // **********************
-    //  BackendVCardDir settings
-    // **********************
-    define('VCARDDIR_DIR', '/home/%u/.kde/share/apps/kabc/stdvcf');
-    
     // **********************
     //  BackendCalDAV settings
     // **********************
-    define('CALDAV_SERVER', 'http://calendar.domain.com');
+	// http://localhost/prvoc/remote.php/caldav/calendars/%u/defaultcalendar?export
+	// http://localhost/prvoc/remote.php/caldav/principals/%u/
+    define('CALDAV_SERVER', 'http://localhost');
     define('CALDAV_PORT', '80');
-    define('CALDAV_PATH', '/caldav.php/%u/');
-    define('CALDAV_PERSONAL', 'home'); //Personal CalDAV folder
+    define('CALDAV_PATH',  '/prvoc/remote.php/caldav/calendars/%u/');
+    define('CALDAV_PERSONAL', 'defaultcalendar'); //Personal CalDAV folder
 
     // **********************
     //  BackendCardDAV settings
     // **********************
-    define('CARDDAV_SERVER', 'http://contacts.domain.com');
+    //
+    //http://localhost/prvoc/remote.php/carddav/addressbooks/%u/contacts
+    //    define('CARDDAV_SERVER', 'http://localhost');
+    //    define('CARDDAV_PORT', '80');
+    //    define('CARDDAV_PATH', '/prvoc/remote.php/carddav/addressbooks/%u/');
+    
+
+    // ************************
+    //  owncloud BackendCardDAV settings
+    // ************************
+    // Server protocol: http or https
+    define('CARDDAV_PROTOCOL', 'http');
+    // Server name
+    define('CARDDAV_SERVER', 'localhost');
+    // Server port
     define('CARDDAV_PORT', '80');
-    define('CARDDAV_PATH', '/caldav.php/%u/');
-    define('CARDDAV_PRINCIPAL', 'addresses'); //Personal CardDAV folder
+    // Server path to the addressbook
+    // %u: replaced with the username
+    // %d: replaced with the domain
+    define('CARDDAV_PATH', '/prvoc/remote.php/carddav/addressbooks/%u/');
+    // Contact addressbook name
+    // %u: replaced with the username
+    // %d: replaced with the domain
+    define('CARDDAV_CONTACTS_FOLDER_NAME', 'contacts'); //Personal Adress book to sync (only 1)
+
+    //define('CARDDAV_PRINCIPAL', 'contacts'); //Personal Adress book to sync (only 1)
 
     
     // **********************
