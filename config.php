@@ -64,7 +64,7 @@
     define('STATE_DIR', '/share/HDA_DATA/var/lib/z-push/');
 
 
-// needed for carddav on qnap
+// for carddav needen lib awl on qnap
   ini_set('include_path',
    BASE_PATH. "include/" . PATH_SEPARATOR .
    BASE_PATH. PATH_SEPARATOR .
@@ -102,7 +102,7 @@
     // Users have to be encapusulated in quotes, several users are comma separated, like:
     //   $specialLogUsers = array('info@domain.com', 'myusername');
     define('LOGUSERLEVEL', LOGLEVEL_DEVICEID);
-    $specialLogUsers = array();
+    $specialLogUsers = array('');
 
     // Location of the trusted CA, e.g. '/etc/ssl/certs/EmailCA.pem'
     // Uncomment and modify the following line if the validation of the certificates fails.
@@ -202,14 +202,14 @@
  */
     // The data providers that we are using (see configuration below)
     define('BACKEND_PROVIDER', "BackendCombined");
-    //define('BACKEND_PROVIDER', "BackendCombined");
+    //define('BACKEND_PROVIDER', "BackendZafara");
 
 
     // ************************
     //  BackendIMAP settings
     // ************************
     // Defines the server to which we want to connect
-    define('IMAP_SERVER', 'imap.youmailhoster.de');
+    define('IMAP_SERVER', 'imap.yourimapprovider.com');
     // connecting to default port (143)
     define('IMAP_PORT', 993);
     // best cross-platform compatibility (see http://php.net/imap_open for options)
@@ -225,7 +225,7 @@
     // loginname is the email address and your CalDAV / CardDAV backend can't handle usernames formated as emailadresses
     // so for login the domainpart of the email address will be added.
     // this has to be reflected in backend/imap.php
-    // define ('IMAP_USERNAMEEXTENSION', '@yourdomain.me');
+    // define ('IMAP_USERNAMEEXTENSION', '@mydomain.me');
     define ('IMAP_USERNAMEEXTENSION', '');
     // copy outgoing mail to this folder. If not set z-push will try the default folders
     define('IMAP_SENTFOLDER', '');
@@ -243,22 +243,13 @@
     // **********************
     //  BackendCalDAV settings
     // **********************
-	// http://localhost/prvoc/remote.php/caldav/calendars/%u/defaultcalendar?export
-	// http://localhost/prvoc/remote.php/caldav/principals/%u/
+
     define('CALDAV_SERVER', 'http://localhost');
     define('CALDAV_PORT', '80');
-    define('CALDAV_PATH',  '/prvoc/remote.php/caldav/calendars/%u/');
+    define('CALDAV_PATH',  '/owncloud/remote.php/caldav/calendars/%u/');
     define('CALDAV_PERSONAL', 'defaultcalendar'); //Personal CalDAV folder
 
-    // **********************
-    //  BackendCardDAV settings
-    // **********************
-    //
-    //http://localhost/prvoc/remote.php/carddav/addressbooks/%u/contacts
-    //    define('CARDDAV_SERVER', 'http://localhost');
-    //    define('CARDDAV_PORT', '80');
-    //    define('CARDDAV_PATH', '/prvoc/remote.php/carddav/addressbooks/%u/');
-    
+ 
 
     // ************************
     //  owncloud BackendCardDAV settings
@@ -272,13 +263,12 @@
     // Server path to the addressbook
     // %u: replaced with the username
     // %d: replaced with the domain
-    define('CARDDAV_PATH', '/prvoc/remote.php/carddav/addressbooks/%u/');
+    define('CARDDAV_PATH', '/owncloud/remote.php/carddav/addressbooks/%u/');
     // Contact addressbook name
     // %u: replaced with the username
     // %d: replaced with the domain
     define('CARDDAV_CONTACTS_FOLDER_NAME', 'contacts'); //Personal Adress book to sync (only 1)
 
-    //define('CARDDAV_PRINCIPAL', 'contacts'); //Personal Adress book to sync (only 1)
 
     
     // **********************

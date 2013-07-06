@@ -79,7 +79,7 @@
  *
  * CardDAV server list
  * -------------------
- * DAViCal:  					https://example.com/{resource|principal|username}/{collection}/
+ * DAViCal:						https://example.com/{resource|principal|username}/{collection}/
  * Apple Addressbook Server:	https://example.com/addressbooks/users/{resource|principal|username}/{collection}/
  * memotoo:						https://sync.memotoo.com/cardDAV/
  * SabreDAV:					https://example.com/addressbooks/{resource|principal|username}/{collection}/
