@@ -1223,7 +1223,6 @@ class BackendCardDAV extends BackendDiff implements ISearchProvider {
             ';;otherstreet;othercity;otherstate;otherpostalcode;othercountry' => 'ADR;TYPE=OTHER'
 	 );  
         $mapping = array(
-            'fileas' => 'FN',
             'lastname;firstname;middlename;title;suffix' => 'N',
             'email1address' => 'EMAIL;TYPE=WORK;TYPE=PREF',
             'email2address' => 'EMAIL;TYPE=HOME',
