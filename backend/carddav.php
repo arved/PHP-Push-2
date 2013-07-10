@@ -1261,12 +1261,12 @@ class BackendCardDAV extends BackendDiff implements ISearchProvider {
 		foreach ($name_fields as $field) {
 			$names[] = $message->$field;
 		}
- 		if (count($names) !== 0){
-			$data .= 'FN:' . implode(' ', $names).'\n';
+ 		if (count($names) !== 0) {
+			$data .= 'FN:' . implode(' ', $names) . "\n";
 		}
 	}
-	else{
-		$data .= 'FN:' . $message->$fileas . '\n';
+	else {
+		$data .= 'FN:' . $message->$fileas . "\n";
 	}
 
         foreach($adrmapping as $adrk => $adrv){
