@@ -1248,10 +1248,28 @@ class BackendCardDAV extends BackendDiff implements ISearchProvider {
 	     'imaddress' => 'IMPP',
 	     'imaddress2' => 'IMPP',
 	     'imaddress3' => 'IMPP'
-
-	 
         );
-        $data = "BEGIN:VCARD\nVERSION:3.0\nPRODID:Z-Push\n";
+ 	$name_fields = array(
+	      'firstname',
+	      'middlename', 
+              'lastname'
+	);
+// start baking the vcard 
+
+       $data = "BEGIN:VCARD\nVERSION:3.0\nPRODID:Z-Push\n";
+ 	if (empty($message->fileas)) {
+ 		$names = array();
+		foreach ($name_fields as $field) {
+			$names[] = $message->$field;
+		}
+ 		if (count($names) !== 0){
+			$data .= 'FN:' . implode(' ', $names).'\n';
+		}
+	}
+	else{
+		$data .= 'FN:' . $message->$fileas . '\n';
+	}
+
         foreach($adrmapping as $adrk => $adrv){
             $adrval = null;
             $adrks = explode(';', $adrk);
