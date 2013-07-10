@@ -457,7 +457,7 @@ class BackendCardDAV extends BackendDiff implements ISearchProvider {
         ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->StatMessage('%s', '%s')", $folderid, $id));
 //TODO: change to folderid
 //new by Avs
-       	try {
+       /*	try {
             // We don't need the actual vcards here, we only need a list of all them
             //$vcards = $this->server->get_list_vcards();
             	$vcards = $this->server->do_sync(true, false);
@@ -476,6 +476,7 @@ class BackendCardDAV extends BackendDiff implements ISearchProvider {
                 		$this->contactsetag[$id] = $vcard->etag->__toString();
             			}
 		}
+		*/
 // new end
         ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->StatMessage('%s', '%s')", $this->contactsetag[$id], $id));
 
