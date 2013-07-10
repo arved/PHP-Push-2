@@ -455,9 +455,30 @@ class BackendCardDAV extends BackendDiff implements ISearchProvider {
      */
     public function StatMessage($folderid, $id) {
         ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->StatMessage('%s', '%s')", $folderid, $id));
-
-        //TODO: change to folderid
+//TODO: change to folderid
+//new by Avs
+       	try {
+            // We don't need the actual vcards here, we only need a list of all them
+            //$vcards = $this->server->get_list_vcards();
+            	$vcards = $this->server->do_sync(true, false);
+        	}
+        	catch (Exception $ex) {
+            	ZLog::Write(LOGLEVEL_ERROR, sprintf("BackendCardDAV->GetMessageList - Error getting the vcards: %s", $ex->getMessage()));
+        	}
         
+        	if ($vcards === false) {
+            		ZLog::Write(LOGLEVEL_ERROR, sprintf("BackendCardDAV->GetMessageList - Error getting the vcards"));
+        	}
+		else {
+			$xml_vcards = new SimpleXMLElement($vcards);
+	     		foreach ($xml_vcards->element as $vcard) {
+                		$id = $vcard->id->__toString();
+                		$this->contactsetag[$id] = $vcard->etag->__toString();
+            			}
+		}
+// new end
+        ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->StatMessage('%s', '%s')", $this->contactsetag[$id], $id));
+
         $message = array();
         $message["mod"] = $this->contactsetag[$id];
         $message["id"] = $id;
