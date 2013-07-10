@@ -1259,7 +1259,8 @@ class BackendCardDAV extends BackendDiff implements ISearchProvider {
 	if (empty($message->fileas)) {
 		$names = array();
 		foreach ($name_fields as $field) {
-			$names[] = $message->$field;
+			if (isset($message->$field) && !empty($message->$field))
+				$names[] = $message->$field;
 		}
 		if (count($names) !== 0) {
 			$data .= 'FN:' . implode(' ', $names) . "\n";
