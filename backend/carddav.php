@@ -1253,15 +1253,15 @@ class BackendCardDAV extends BackendDiff implements ISearchProvider {
 	      'middlename', 
               'lastname'
 	);
-// start baking the vcard 
 
-       $data = "BEGIN:VCARD\nVERSION:3.0\nPRODID:Z-Push\n";
- 	if (empty($message->fileas)) {
- 		$names = array();
+	// start baking the vcard 
+	$data = "BEGIN:VCARD\nVERSION:3.0\nPRODID:Z-Push\n";
+	if (empty($message->fileas)) {
+		$names = array();
 		foreach ($name_fields as $field) {
 			$names[] = $message->$field;
 		}
- 		if (count($names) !== 0) {
+		if (count($names) !== 0) {
 			$data .= 'FN:' . implode(' ', $names) . "\n";
 		}
 	}
