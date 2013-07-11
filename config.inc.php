@@ -50,27 +50,27 @@
     // Defines the base path on the server
     define('BASE_PATH', dirname($_SERVER['SCRIPT_FILENAME']). '/');
 
+   // Define the include paths
+   ini_set('include_path',
+   BASE_PATH. "include/" . PATH_SEPARATOR .
+   BASE_PATH. PATH_SEPARATOR .
+   ini_get('include_path') . PATH_SEPARATOR .
+   "/usr/share/php/" . PATH_SEPARATOR .
+   "/usr/share/php5/" . PATH_SEPARATOR .
+   "/usr/share/pear/" . PATH_SEPARATOR .
+   "/usr/share/awl/inc");
+
     // Try to set unlimited timeout
     define('SCRIPT_TIMEOUT', 0);
 
     //Max size of attachments to display inline. Default is 2 MB
     define('MAX_EMBEDDED_SIZE', 2097152);
-    define('USE_SHARED_MEM', false);
 
 
 /**********************************************************************************
  *  Default FileStateMachine settings
  */
-    define('STATE_DIR', '/share/HDA_DATA/var/lib/z-push/');
-
-
-// for carddav needen lib awl on qnap
-  ini_set('include_path',
-   BASE_PATH. "include/" . PATH_SEPARATOR .
-   BASE_PATH. PATH_SEPARATOR .
-   ini_get('include_path') . PATH_SEPARATOR .
-   "/usr/share/php/" . PATH_SEPARATOR .
-   "/usr/share/awl/inc");
+    define('STATE_DIR', '/var/lib/z-push/');
 
 
 /**********************************************************************************
@@ -90,10 +90,10 @@
  *  ones, e.g. setting to LOGLEVEL_DEBUG will also output LOGLEVEL_FATAL, LOGLEVEL_ERROR,
  *  LOGLEVEL_WARN and LOGLEVEL_INFO level entries.
  */
-    define('LOGFILEDIR', '/share/HDA_DATA/var/log/z-push/');
+    define('LOGFILEDIR', '/var/log/z-push/');
     define('LOGFILE', LOGFILEDIR . 'z-push.log');
     define('LOGERRORFILE', LOGFILEDIR . 'z-push-error.log');
-    define('LOGLEVEL', LOGLEVEL_WBXMLSTACK);
+    define('LOGLEVEL', LOGLEVEL_INFO);
     define('LOGAUTHFAIL', false);
 
 
@@ -102,7 +102,7 @@
     // Users have to be encapusulated in quotes, several users are comma separated, like:
     //   $specialLogUsers = array('info@domain.com', 'myusername');
     define('LOGUSERLEVEL', LOGLEVEL_DEVICEID);
-    $specialLogUsers = array('');
+    $specialLogUsers = array();
 
     // Location of the trusted CA, e.g. '/etc/ssl/certs/EmailCA.pem'
     // Uncomment and modify the following line if the validation of the certificates fails.
@@ -163,12 +163,7 @@
     // option is selected for company).
     // If SYNC_FILEAS_COMPANYONLY is selected and company of the contact is not set
     // SYNC_FILEAS_LASTFIRST will be used
-    define('FILEAS_ORDER', SYNC_FILEAS_FIRSTLAST);
-    
-    // always override the FN value with the value generated in FILEAS_ORDER (true), or 
-    // just create it according to the FILEAS_ORDER rule, if the value is empty (false) 
-    // only for valid for the carddav.php for owncloud
-    define('FILEAS_ALLWAYSOVERRIDE', false);
+    define('FILEAS_ORDER', SYNC_FILEAS_LASTFIRST);
 
     // Amount of items to be synchronized per request
     // Normally this value is requested by the mobile. Common values are 5, 25, 50 or 100.
@@ -176,66 +171,39 @@
     // Z-Push will use the lowest value, either set here or by the mobile.
     // default: 100 - value used if mobile does not limit amount of items
     define('SYNC_MAX_ITEMS', 100);
-    
-    // Require Certificate DN Match to Username
-    //
-    // If enabled, additional checks are performed:
-    // - Validity SSL_CLIENT_V_START <= time() <= SSL_CLIENT_V_END
-    // - Certificate Issuer (Optional: See SYNC_REQUIRE_CLIENT_CRT_ISSUER)
-    // Example: (string) 'SSL_CLIENT_S_DN_UID'
-    // Disable: (bool) false
-    //define('SYNC_REQUIRE_CLIENT_CRT_USERNAME_IN', 'SSL_CLIENT_S_DN_CN');
-    define('SYNC_REQUIRE_CLIENT_CRT_USERNAME_IN', false);
-    
-    // Require Client Certificate Issuer DN (aka Subject) (SSL_CLIENT_I_DN) to match a specific DN
-    //
-    // This isn't really necessary, as the Webserver already needs to trust
-    // the signing CA.
-    // Anyway, an attacker could have signed a client certificate by another
-    // trusted CA and that can't possibly be distinguished.
-    //
-    // If defined, SYNC_REQUIRE_CRT_USERNAME_IN will only pass if
-    // the Issuer of the Client Cert matches the given Issuer String
-    // Example: (string) '/C=DE/ST=Berlin/L=Berlin/O=My Lovely Own CA/OU=Testing (CA-OU)/CN=my-lovely-own-ca.example.org/emailAddress=s.seitz@heinlein-support.de'
-    // Disable: (bool) false
-    //define('SYNC_REQUIRE_CLIENT_CRT_ISSUER', '/C=DE/ST=Berlin/L=Berlin/O=My Lovely Own CA/OU=Testing (CA-OU)/CN=my-lovely-own-ca.example.org/emailAddress=s.seitz@heinlein-support.de');
-    define('SYNC_REQUIRE_CLIENT_CRT_ISSUER', false);
-
 
 /**********************************************************************************
  *  Backend settings
  */
     // The data providers that we are using (see configuration below)
-    define('BACKEND_PROVIDER', "BackendCombined");
-    //define('BACKEND_PROVIDER', "BackendZafara");
+    define('BACKEND_PROVIDER', "BackendZarafa");
+
+
+    // ************************
+    //  BackendZarafa settings
+    // ************************
+    // Defines the server to which we want to connect
+    define('MAPI_SERVER', 'file:///var/run/zarafa');
 
 
     // ************************
     //  BackendIMAP settings
     // ************************
     // Defines the server to which we want to connect
-    define('IMAP_SERVER', 'imap.yourimapprovider.com');
+    define('IMAP_SERVER', 'sogo-demo.inverse.ca');
     // connecting to default port (143)
-    define('IMAP_PORT', 993);
+    define('IMAP_PORT', 143);
     // best cross-platform compatibility (see http://php.net/imap_open for options)
-    //define('IMAP_OPTIONS', '/notls/norsh');
-    define('IMAP_OPTIONS', '/ssl/notls/norsh/novalidate-cert');
+    define('IMAP_OPTIONS', '/notls/norsh');
     // overwrite the "from" header if it isn't set when sending emails
     // options: 'username'    - the username will be set (usefull if your login is equal to your emailaddress)
     //        'domain'    - the value of the "domain" field is used
     //        '@mydomain.com' - the username is used and the given string will be appended
     define('IMAP_DEFAULTFROM', '');
-    // for 3rd party email providers
-    // to append a string to the username which can be useful if, for example the 3rd party imap 
-    // loginname is the email address and your CalDAV / CardDAV backend can't handle usernames formated as emailadresses
-    // so for login the domainpart of the email address will be added.
-    // this has to be reflected in backend/imap.php
-    // define ('IMAP_USERNAMEEXTENSION', '@mydomain.me');
-    define ('IMAP_USERNAMEEXTENSION', '');
     // copy outgoing mail to this folder. If not set z-push will try the default folders
     define('IMAP_SENTFOLDER', '');
     // forward messages inline (default false - as attachment)
-    define('IMAP_INLINE_FORWARD', true);
+    define('IMAP_INLINE_FORWARD', false);
     // use imap_mail() to send emails (default) - if false mail() is used
     define('IMAP_USE_IMAPMAIL', true);
     /* BEGIN fmbiete's contribution r1527, ZP-319 */
@@ -245,37 +213,38 @@
     /* END fmbiete's contribution r1527, ZP-319 */
 
 
+    // ************************
+    //  BackendMaildir settings
+    // ************************
+    define('MAILDIR_BASE', '/tmp');
+    define('MAILDIR_SUBDIR', 'Maildir');
+
+    // **********************
+    //  BackendVCardDir settings
+    // **********************
+    define('VCARDDIR_DIR', '/home/%u/.kde/share/apps/kabc/stdvcf');
+
     // **********************
     //  BackendCalDAV settings
     // **********************
-
-    define('CALDAV_SERVER', 'http://localhost');
+    // %u is replaced by the username
+    // Using HTTPS is recommended
+    define('CALDAV_SERVER', 'http://sogo-demo.inverse.ca');
     define('CALDAV_PORT', '80');
-    define('CALDAV_PATH',  '/owncloud/remote.php/caldav/calendars/%u/');
-    define('CALDAV_PERSONAL', 'defaultcalendar'); //Personal CalDAV folder
+    define('CALDAV_PATH', '/SOGo/dav/%u/');
+    define('CALDAV_PERSONAL', 'home'); //Personal CalDAV folder
 
- 
-
-    // ************************
-    //  owncloud BackendCardDAV settings
-    // ************************
-    // Server protocol: http or https
-    define('CARDDAV_PROTOCOL', 'http');
-    // Server name
-    define('CARDDAV_SERVER', 'localhost');
-    // Server port
+    // **********************
+    //  BackendCardDAV settings
+    // **********************
+    // %u is replaced by the username
+    // Using HTTPS is recommended
+    define('CARDDAV_SERVER', 'http://sogo-demo.inverse.ca');
     define('CARDDAV_PORT', '80');
-    // Server path to the addressbook
-    // %u: replaced with the username
-    // %d: replaced with the domain
-    define('CARDDAV_PATH', '/owncloud/remote.php/carddav/addressbooks/%u/');
-    // Contact addressbook name
-    // %u: replaced with the username
-    // %d: replaced with the domain
-    define('CARDDAV_CONTACTS_FOLDER_NAME', 'contacts'); //Personal Adress book to sync (only 1)
+    define('CARDDAV_PATH', '/SOGo/dav/%u/Contacts/');
+    define('CARDDAV_PRINCIPAL', 'personal'); //Personal CardDAV folder
 
 
-    
     // **********************
     //  BackendLDAP settings
     // **********************

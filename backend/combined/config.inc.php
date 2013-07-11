@@ -7,7 +7,7 @@
 *
 * Created   :   29.11.2010
 *
-* Copyright 2007 - 2013 Zarafa Deutschland GmbH
+* Copyright 2007 - 2010 Zarafa Deutschland GmbH
 *
 * This program is free software: you can redistribute it and/or modify
 * it under the terms of the GNU Affero General Public License, version 3,
@@ -45,6 +45,11 @@
 class BackendCombinedConfig {
 
     // *************************
+    //  BackendZarafa settings
+    // *************************
+    public static $BackendZarafa_config = array('MAPI_SERVER' => MAPI_SERVER);
+
+    // *************************
     //  BackendIMAP settings
     // *************************
     public static $BackendIMAP_config = array(
@@ -67,37 +72,36 @@ class BackendCombinedConfig {
         'IMAP_USE_IMAPMAIL' => IMAP_USE_IMAPMAIL,
     );
 
-    // *************************
-    //  BackendCalDAV settings
-    // *************************
+    // ******************************
+    // BackendCalDAV settings
+    // ******************************
     public static $BackendCalDAV_config = array(
-        'CALDAV_SERVER' => CALDAV_SERVER,
-        'CALDAV_PORT' => CALDAV_PORT,
-        'CALDAV_PATH' => CALDAV_PATH,
+        'CALDAV_URL' => CALDAV_URL,
+        'CALDAV_PERSONAL' => CALDAV_PERSONAL,
+        'CALDAV_READONLY' => CALDAV_READONLY,
     );
-    
-    // *************************
-    //  BackendCardDAV settings
-    // *************************
+
+    // ******************************
+    // BackendCardDAV settings
+    // ******************************
     public static $BackendCardDAV_config = array(
-        'CARDDAV_SERVER' => CARDDAV_SERVER,
-        'CARDDAV_PORT' => CARDDAV_PORT,
-        'CARDDAV_PATH' => CARDDAV_PATH,
-	 //'CARDDAV_PRINCIPAL' => CARDDAV_PRINCIPAL,
-	 'CARDDAV_PORT' => CARDDAV_PORT,
-	 'CARDDAV_CONTACTS_FOLDER_NAME' => CARDDAV_CONTACTS_FOLDER_NAME,
-
+        'CARDDAV_URL' => CARDDAV_URL,
+        'CARDDAV_PERSONAL' => CARDDAV_PERSONAL,
+        'CARDDAV_READONLY' => CARDDAV_READONLY,
     );
 
     // *************************
-    //  BackendLDAP settings
+    //  BackendMaildir settings
     // *************************
-    public static $BackendLDAP_config = array(
-        'LDAP_SERVER' => LDAP_SERVER,
-        'LDAP_SERVER_PORT' => LDAP_SERVER_PORT,
-        'LDAP_USER_DN' => LDAP_USER_DN,
-        'LDAP_BASE_DNS' => LDAP_BASE_DNS,
+    public static $BackendMaildir_config = array(
+        'MAILDIR_BASE' => MAILDIR_BASE,
+        'MAILDIR_SUBDIR' => MAILDIR_SUBDIR,
     );
+
+    // *************************
+    //  BackendVCardDir settings
+    // *************************
+    public static $BackendVCardDir_config = array('VCARDDIR_DIR' => VCARDDIR_DIR);
 
     // *************************
     //  BackendCombined settings
@@ -117,26 +121,36 @@ class BackendCombinedConfig {
             //login only succeeds if all backend return true on login
             //sending mail: the mail is sent with first backend that is able to send the mail
             'backends' => array(
-/*
-
+                'c' => array(
+		    'name' => 'BackendCalDAV',
+                    'config' => self::$BackendCalDAV_config,
+                 ),
+                'v' => array(
+                    'name' => 'BackendCardDAV',
+                    'config' => self::$BackendCardDAV_config,
                 ),
-                'l' => array(
-                    'name' => 'BackendLDAP',
-                    'config' => self::$BackendLDAP_config,
-                ),
-*/
                 'i' => array(
                     'name' => 'BackendIMAP',
                     'config' => self::$BackendIMAP_config,
                 ),
-                'd' => array(
-                    'name' => 'BackendCardDAV',
-                    'config' => self::$BackendCardDAV_config,
+/*
+                'i' => array(
+                    'name' => 'BackendIMAP',
+                    'config' => self::$BackendIMAP_config,
                 ),
-                'c' => array(
-                    'name' => 'BackendCalDAV',
-                    'config' => self::$BackendCalDAV_config,
+                'z' => array(
+                    'name' => 'BackendZarafa',
+                    'config' => self::$BackendZarafa_config
                 ),
+                'm' => array(
+                    'name' => 'BackendMaildir',
+                    'config' => self::$BackendMaildir_config,
+                ),
+                'v' => array(
+                    'name' => 'BackendVCardDir',
+                    'config' => self::$BackendVCardDir_config,
+                ),
+*/
             ),
             'delimiter' => '/',
             //force one type of folder to one backend
@@ -149,17 +163,17 @@ class BackendCombinedConfig {
                 SYNC_FOLDER_TYPE_OUTBOX => 'i',
                 SYNC_FOLDER_TYPE_TASK => 'c',
                 SYNC_FOLDER_TYPE_APPOINTMENT => 'c',
-                SYNC_FOLDER_TYPE_CONTACT => 'd',
-                // SYNC_FOLDER_TYPE_NOTE => 'c',
-                SYNC_FOLDER_TYPE_JOURNAL => 'c',
+                SYNC_FOLDER_TYPE_CONTACT => 'v',
+                SYNC_FOLDER_TYPE_NOTE => 'z',
+                SYNC_FOLDER_TYPE_JOURNAL => 'z',
                 SYNC_FOLDER_TYPE_OTHER => 'i',
                 SYNC_FOLDER_TYPE_USER_MAIL => 'i',
                 SYNC_FOLDER_TYPE_USER_APPOINTMENT => 'c',
-                SYNC_FOLDER_TYPE_USER_CONTACT => 'd',
+                SYNC_FOLDER_TYPE_USER_CONTACT => 'v',
                 SYNC_FOLDER_TYPE_USER_TASK => 'c',
-                SYNC_FOLDER_TYPE_USER_JOURNAL => 'c',
-                // SYNC_FOLDER_TYPE_USER_NOTE => 'c',
-                SYNC_FOLDER_TYPE_UNKNOWN => 'i',
+                SYNC_FOLDER_TYPE_USER_JOURNAL => 'z',
+                SYNC_FOLDER_TYPE_USER_NOTE => 'z',
+                SYNC_FOLDER_TYPE_UNKNOWN => 'z',
             ),
             //creating a new folder in the root folder should create a folder in one backend
             'rootcreatefolderbackend' => 'i',

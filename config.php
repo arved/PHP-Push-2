@@ -45,7 +45,7 @@
  *  Default settings
  */
     // Defines the default time zone, change e.g. to "Europe/London" if necessary
-    define('TIMEZONE', '');
+    define('TIMEZONE', 'Europe/Berlin');
 
     // Defines the base path on the server
     define('BASE_PATH', dirname($_SERVER['SCRIPT_FILENAME']). '/');
@@ -56,11 +56,21 @@
     //Max size of attachments to display inline. Default is 2 MB
     define('MAX_EMBEDDED_SIZE', 2097152);
 
+    //limitation of qnap
+    define('USE_SHARED_MEM', false);
+
 
 /**********************************************************************************
  *  Default FileStateMachine settings
  */
-    define('STATE_DIR', '/var/lib/z-push/');
+    define('STATE_DIR', '/share/HDA_DATA/var/lib/z-push/');
+
+   ini_set('include_path',
+   BASE_PATH. "include/" . PATH_SEPARATOR .
+   BASE_PATH. PATH_SEPARATOR .
+   ini_get('include_path') . PATH_SEPARATOR .
+   "/usr/share/php/" . PATH_SEPARATOR .
+   "/usr/share/awl/inc");
 
 
 /**********************************************************************************
@@ -80,7 +90,7 @@
  *  ones, e.g. setting to LOGLEVEL_DEBUG will also output LOGLEVEL_FATAL, LOGLEVEL_ERROR,
  *  LOGLEVEL_WARN and LOGLEVEL_INFO level entries.
  */
-    define('LOGFILEDIR', '/var/log/z-push/');
+    define('LOGFILEDIR', '/share/HDA_DATA/var/log/z-push/');
     define('LOGFILE', LOGFILEDIR . 'z-push.log');
     define('LOGERRORFILE', LOGFILEDIR . 'z-push-error.log');
     define('LOGLEVEL', LOGLEVEL_DEBUG);
@@ -191,25 +201,21 @@
  *  Backend settings
  */
     // The data providers that we are using (see configuration below)
-    define('BACKEND_PROVIDER', "BackendZarafa");
+    define('BACKEND_PROVIDER', "BackendCombined");
 
 
-    // ************************
-    //  BackendZarafa settings
-    // ************************
-    // Defines the server to which we want to connect
-    define('MAPI_SERVER', 'file:///var/run/zarafa');
 
 
     // ************************
     //  BackendIMAP settings
     // ************************
     // Defines the server to which we want to connect
-    define('IMAP_SERVER', 'localhost');
+    define('IMAP_SERVER', 'imap.someserve.com');
     // connecting to default port (143)
-    define('IMAP_PORT', 143);
+    define('IMAP_PORT', 993);
     // best cross-platform compatibility (see http://php.net/imap_open for options)
-    define('IMAP_OPTIONS', '/notls/norsh');
+    //define('IMAP_OPTIONS', '/notls/norsh');
+    define('IMAP_OPTIONS', '/ssl/notls/norsh/novalidate-cert');
     // overwrite the "from" header if it isn't set when sending emails
     // options: 'username'    - the username will be set (usefull if your login is equal to your emailaddress)
     //        'domain'    - the value of the "domain" field is used
@@ -218,14 +224,15 @@
     // copy outgoing mail to this folder. If not set z-push will try the default folders
     define('IMAP_SENTFOLDER', '');
     // forward messages inline (default false - as attachment)
-    define('IMAP_INLINE_FORWARD', false);
+    define('IMAP_INLINE_FORWARD', true);
     // use imap_mail() to send emails (default) - if false mail() is used
     define('IMAP_USE_IMAPMAIL', true);
-    /* BEGIN fmbiete's contribution r1527, ZP-319 */
-    // list of folders we want to exclude from sync. Names, or part of it, separated by |
-    // example: dovecot.sieve|archive|spam
-    define('IMAP_EXCLUDED_FOLDERS', '');
     /* END fmbiete's contribution r1527, ZP-319 */
+    // to append a string to the username which can be useful if, for example the 3rd party imap 
+    // loginname is the email address and your CalDAV / CardDAV backend can't handle usernames formated as emailadresses
+    // so for login the domainpart of the email address will be added.
+    // this has to be reflected in backend/imap.php
+    define ('IMAP_USERNAMEEXTENSION', '');
 
 
     // ************************
@@ -242,10 +249,31 @@
     // **********************
     //  BackendCalDAV settings
     // **********************
-    define('CALDAV_SERVER', 'http://calendar.domain.com');
+    define('CALDAV_SERVER', 'http://localhost');
     define('CALDAV_PORT', '80');
-    define('CALDAV_PATH', '/caldav.php/%u/');
-    define('CALDAV_PERSONAL', 'home'); //Personal CalDAV folder
+    define('CALDAV_PATH', '/owncloud/remote.php/caldav/calendars/%u/');
+    define('CALDAV_PERSONAL', 'defaultcalendar'); //Personal CalDAV folder
+
+    // ************************
+    //  BackendCardDAV_OC5 settings
+    // ************************
+    // Server protocol: http or https
+    define('CARDDAV_PROTOCOL_OC5', 'http');
+    // Server name
+    define('CARDDAV_SERVER_OC5', 'localhost');
+    // Server port
+    define('CARDDAV_PORT_OC5', '80');
+    // Server path to the addressbook
+    // %u: replaced with the username
+    // %d: replaced with the domain
+    define('CARDDAV_PATH_OC5', '/owncloud/remote.php/carddav/addressbooks/%u/');
+    // Contact addressbook name
+    // %u: replaced with the username
+    // %d: replaced with the domain
+    define('CARDDAV_CONTACTS_FOLDER_NAME_OC5', 'contacts'); //Personal Adress book to sync (only 1)
+    // always override the FN value with the value generated in FILEAS_ORDER (true), or 
+    // just create it according to the FILEAS_ORDER rule, if the value is empty (false) 
+    define('FILEAS_ALLWAYSOVERRIDE_OC5', true);
 
     // **********************
     //  BackendCardDAV settings

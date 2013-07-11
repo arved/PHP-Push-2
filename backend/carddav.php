@@ -1,1340 +1,585 @@
 <?php
 /***********************************************
-* File      :   carddav.php
-* Project   :   Z-Push
-* Descr     :   This backend is for carddav servers.
+* File      :   CardDAV.php
+* Project   :   SOGoSync
+* Descr     :   This backend is based on
+*               'BackendDiff' and implements an
+*               CardDAV interface
 *
-* Created   :   16.03.2013
+* Created   :   29.03.2012
 *
-* Copyright 2007 - 2013 Zarafa Deutschland GmbH
+* Copyright 2012 <xbgmsharp@gmail.com>
 *
-* This program is free software: you can redistribute it and/or modify
-* it under the terms of the GNU Affero General Public License, version 3,
-* as published by the Free Software Foundation with the following additional
-* term according to sec. 7:
+* Modified by Francisco Miguel Biete <fmbiete@gmail.com>
+* Work with DaviCal. Limited to 1 addressbook/principal
 *
-* According to sec. 7 of the GNU Affero General Public License, version 3,
-* the terms of the AGPL are supplemented with the following terms:
-*
-* "Zarafa" is a registered trademark of Zarafa B.V.
-* "Z-Push" is a registered trademark of Zarafa Deutschland GmbH
-* The licensing of the Program under the AGPL does not imply a trademark license.
-* Therefore any rights, title and interest in our trademarks remain entirely with us.
-*
-* However, if you propagate an unmodified version of the Program you are
-* allowed to use the term "Z-Push" to indicate that you distribute the Program.
-* Furthermore you may use our trademarks where it is necessary to indicate
-* the intended purpose of a product or service provided you use it in accordance
-* with honest practices in industrial or commercial matters.
-* If you want to propagate modified versions of the Program under the name "Z-Push",
-* you may only do so if you have a written permission by Zarafa Deutschland GmbH
-* (to acquire a permission please contact Zarafa at trademark@zarafa.com).
-*
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-* GNU Affero General Public License for more details.
-*
-* You should have received a copy of the GNU Affero General Public License
-* along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-* Consult LICENSE file for details
 ************************************************/
 
-// config file
-
 include_once('lib/default/diffbackend/diffbackend.php');
-include_once('include/qoc_carddav.php');
+include_once('include/carddav.php');
 include_once('include/z_RTF.php');
 include_once('include/vCard.php');
 
-class BackendCardDAV extends BackendDiff implements ISearchProvider {
+class BackendCardDAV extends BackendDiff {
+	// SOGoSync version
+	const SOGOSYNC_VERSION = '0.4.0';
+	// SOGoSync vcard Prodid
+	const SOGOSYNC_PRODID = 'SOGoSync';
 
-    private $domain = '';
-    private $username = '';
-    private $url = null;
-    private $server = null;
+	private $_carddav;
+	private $_carddav_path;
+	private $_collection = array();
 
-    // Android only supports synchronizing 1 AddressBook per account
-    private $foldername = "contacts";
-    
-    private $changessinkinit = false;
-    private $contactsetag;
-
-    /**
-     * Constructor
-     *
-     */
-    public function BackendCardDAV() {
-        if (!function_exists("curl_init")) {
-            throw new FatalException("BackendCardDAV(): php-curl is not found", 0, null, LOGLEVEL_FATAL);
-        }
-
-        $this->contactsetag = array();
-    }
-    
-    /**
-     * Authenticates the user - NOT EFFECTIVELY IMPLEMENTED
-     * Normally some kind of password check would be done here.
-     * Alternatively, the password could be ignored and an Apache
-     * authentication via mod_auth_* could be done
-     *
-     * @param string        $username
-     * @param string        $domain
-     * @param string        $password
-     *
-     * @access public
-     * @return boolean
-     */
-    public function Logon($username, $domain, $password) {
-        $url = CARDDAV_PROTOCOL . '://' . CARDDAV_SERVER . ':' . CARDDAV_PORT . str_replace("%d", $domain, str_replace("%u", $username, CARDDAV_PATH));
-        $this->server = new carddav_backend($url);
-        $this->server->set_auth($username, $password);
-        
-        if (($connected = $this->server->check_connection())) {
-            ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->Logon(): User '%s' is authenticated on '%s'", $username, $url));
-            $this->url = $url;
-            $this->username = $username;
-            $this->domain = $domain;
-            $this->server->set_folder(CARDDAV_CONTACTS_FOLDER_NAME);
-        }
-        else {
-            ZLog::Write(LOGLEVEL_ERROR, sprintf("BackendCardDAV->Logon(): User '%s' failed to authenticate on '%s': %s", $username, $url));
-            $this->server = null;
-            //TODO: get error message
-        }
-        
-        return $connected;
-    }
-
-    /**
-     * Logs off
-     *
-     * @access public
-     * @return boolean
-     */
-    public function Logoff() {
-        $this->server = null;
-        
-        $this->SaveStorages();
-        
-        unset($this->contactsetag);
-        
-        return true;
-    }
-
-    /**
-     * Sends an e-mail
-     * Not implemented here
-     *
-     * @param SyncSendMail  $sm     SyncSendMail object
-     *
-     * @access public
-     * @return boolean
-     * @throws StatusException
-     */
-    public function SendMail($sm) {
-        return false;
-    }
-
-    /**
-     * Returns the waste basket
-     * Not implemented here
-     *
-     * @access public
-     * @return string
-     */
-    public function GetWasteBasket() {
-        return false;
-    }
-
-    /**
-     * Returns the content of the named attachment as stream
-     * Not implemented here
-     *
-     * @param string        $attname
-     *
-     * @access public
-     * @return SyncItemOperationsAttachment
-     * @throws StatusException
-     */
-    public function GetAttachmentData($attname) {
-        return false;
-    }
-    
-    /**
-     * Indicates if the backend has a ChangesSink.
-     * A sink is an active notification mechanism which does not need polling.
-     * The CardDAV backend simulates a sink by polling revision dates from the vcards
-     *
-     * @access public
-     * @return boolean
-     */
-    public function HasChangesSink() {
-        return true;
-    }
-
-    /**
-     * The folder should be considered by the sink.
-     * Folders which were not initialized should not result in a notification
-     * of IBackend->ChangesSink().
-     *
-     * @param string        $folderid
-     *
-     * @access public
-     * @return boolean      false if found can not be found
-     */
-    public function ChangesSinkInitialize($folderid) {
-        ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->ChangesSinkInitialize(): folderid '%s'", $folderid));
-        
-        $this->changessinkinit = true;
-
-        // We don't need the actual cards, we only need to get the changes since this moment
-        //FIXME: we need to get the changes since the last actual sync
-        
-        $vcards = false;
-        try {
-            $vcards = $this->server->do_sync(true, false);
-        }
-        catch (Exception $ex) {
-            ZLog::Write(LOGLEVEL_ERROR, sprintf("BackendCardDAV->ChangesSinkInitialize - Error doing the initial sync: %s", $ex->getMessage()));
-        }
-        
-        if ($vcards === false) {
-            ZLog::Write(LOGLEVEL_ERROR, sprintf("BackendCardDAV->ChangesSinkInitialize - Error initializing the sink"));
-            return false;
-        }
-        
-        unset($vcards);
-        
-        return true;
-    }
-
-    /**
-     * The actual ChangesSink.
-     * For max. the $timeout value this method should block and if no changes
-     * are available return an empty array.
-     * If changes are available a list of folderids is expected.
-     *
-     * @param int           $timeout        max. amount of seconds to block
-     *
-     * @access public
-     * @return array
-     */
-    public function ChangesSink($timeout = 30) {
-        $notifications = array();
-        $stopat = time() + $timeout - 1;
-        $changed = false;
-
-        //We can get here and the ChangesSink not be initialized yet
-        if (!$this->changessinkinit) {
-            ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->ChangesSink - Not initialized ChangesSink, exiting"));
-            return $notifications;
-        }
-        
-        while($stopat > time() && empty($notifications)) {
-            $vcards = false;
-            try {
-                $vcards = $this->server->do_sync(false, false);
-            }
-            catch (Exception $ex) {
-                ZLog::Write(LOGLEVEL_ERROR, sprintf("BackendCardDAV->ChangesSink - Error resyncing vcards: %s", $ex->getMessage()));
-            }
-            
-            if ($vcards === false) {
-                ZLog::Write(LOGLEVEL_ERROR, sprintf("BackendCardDAV->ChangesSink - Error getting the changes"));
-                return false;
-            }
-            else {
-                $xml_vcards = new SimpleXMLElement($vcards);
-                unset($vcards);
-                
-                if (count($xml_vcards->element) > 0) {
-                    $changed = true;
-                    ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->ChangesSink - Changes detected"));
-                }
-                unset($xml_vcards);
-            }
-            
-            if ($changed) {
-                $notifications[] = $this->foldername;
-            }
-
-            if (empty($notifications))
-                sleep(5);
-        }
-
-        return $notifications;
-    }    
-
-    /**----------------------------------------------------------------------------------------------------------
-     * implemented DiffBackend methods
-     */
-
-    /**
-     * Returns a list (array) of folders.
-     * In simple implementations like this one, probably just one folder is returned.
-     *
-     * @access public
-     * @return array
-     */
-    public function GetFolderList() {
-        ZLog::Write(LOGLEVEL_DEBUG, 'BackendCardDAV::GetFolderList()');
-        
-        //TODO: support multiple addressbooks, autodiscover thems
-        $addressbooks = array();
-        $addressbook = $this->StatFolder($this->foldername);
-        $addressbooks[] = $addressbook;
-
-        return $addressbooks;
-    }
-
-    /**
-     * Returns an actual SyncFolder object
-     *
-     * @param string        $id           id of the folder
-     *
-     * @access public
-     * @return object       SyncFolder with information
-     */
-    public function GetFolder($id) {
-        ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV::GetFolder('%s')", $id));
-        
-        $addressbook = false;
-        
-        if ($id == $this->foldername) {
-            $addressbook = new SyncFolder();
-            $addressbook->serverid = $id;
-            $addressbook->parentid = "0";
-            $addressbook->displayname = str_replace("%d", $this->domain, str_replace("%u", $this->username, CARDDAV_CONTACTS_FOLDER_NAME));
-            $addressbook->type = SYNC_FOLDER_TYPE_CONTACT;
-        }
-
-        return $addressbook;
-    }
-
-    /**
-     * Returns folder stats. An associative array with properties is expected.
-     *
-     * @param string        $id             id of the folder
-     *
-     * @access public
-     * @return array
-     */
-    public function StatFolder($id) {
-        ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV::StatFolder('%s')", $id));
-        
-        $addressbook = $this->GetFolder($id);
-
-        $stat = array();
-        $stat["id"] = $id;
-        $stat["parent"] = $addressbook->parentid;
-        $stat["mod"] = $addressbook->displayname;
-
-        return $stat;
-    }
-
-    /**
-     * Creates or modifies a folder
-     * Not implemented here
-     *
-     * @param string        $folderid       id of the parent folder
-     * @param string        $oldid          if empty -> new folder created, else folder is to be renamed
-     * @param string        $displayname    new folder name (to be created, or to be renamed to)
-     * @param int           $type           folder type
-     *
-     * @access public
-     * @return boolean                      status
-     * @throws StatusException              could throw specific SYNC_FSSTATUS_* exceptions
-     *
-     */
-    public function ChangeFolder($folderid, $oldid, $displayname, $type){
-        return false;
-    }
-
-    /**
-     * Deletes a folder
-     * Not implemented here
-     *
-     * @param string        $id
-     * @param string        $parent         is normally false
-     *
-     * @access public
-     * @return boolean                      status - false if e.g. does not exist
-     * @throws StatusException              could throw specific SYNC_FSSTATUS_* exceptions
-     *
-     */
-    public function DeleteFolder($id, $parentid){
-        return false;
-    }
-
-    /**
-     * Returns a list (array) of messages
-     *
-     * @param string        $folderid       id of the parent folder
-     * @param long          $cutoffdate     timestamp in the past from which on messages should be returned
-     *
-     * @access public
-     * @return array/false  array with messages or false if folder is not available
-     */
-    public function GetMessageList($folderid, $cutoffdate) {
-        ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->GetMessageList('%s', '%s')", $folderid, $cutoffdate));
-        
-        $messages = array();
-        
-        $vcards = false;
-        try {
-            // We don't need the actual vcards here, we only need a list of all them
-            //$vcards = $this->server->get_list_vcards();
-            $vcards = $this->server->do_sync(true, false);
-        }
-        catch (Exception $ex) {
-            ZLog::Write(LOGLEVEL_ERROR, sprintf("BackendCardDAV->GetMessageList - Error getting the vcards: %s", $ex->getMessage()));
-        }
-        
-        if ($vcards === false) {
-            ZLog::Write(LOGLEVEL_ERROR, sprintf("BackendCardDAV->GetMessageList - Error getting the vcards"));
-        }
-        else {
-            $xml_vcards = new SimpleXMLElement($vcards);
-            foreach ($xml_vcards->element as $vcard) {
-                $id = $vcard->id->__toString();
-                $this->contactsetag[$id] = $vcard->etag->__toString();
-                $messages[] = $this->StatMessage($folderid, $id);
-            }
-        }
-
-        return $messages;
-    }
-
-    /**
-     * Returns the actual SyncXXX object type.
-     *
-     * @param string            $folderid           id of the parent folder
-     * @param string            $id                 id of the message
-     * @param ContentParameters $contentparameters  parameters of the requested message (truncation, mimesupport etc)
-     *
-     * @access public
-     * @return object/false     false if the message could not be retrieved
-     */
-    public function GetMessage($folderid, $id, $contentparameters) {
-        ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->GetMessage('%s', '%s')", $folderid, $id));
-        
-        $message = false;
-        
-        //TODO: change folderid
-        $xml_vcard = false;
-        try {
-            $xml_vcard = $this->server->get_xml_vcard($id);
-        }
-        catch (Exception $ex) {
-            ZLog::Write(LOGLEVEL_ERROR, sprintf("BackendCardDAV->GetMessage - Error getting vcard: %s", $ex->getMessage()));
-        }
-        
-        if ($xml_vcard === false) {
-            ZLog::Write(LOGLEVEL_ERROR, sprintf("BackendCardDAV->GetMessage(): getting vCard"));
-        }
-        else {
-            $truncsize = Utils::GetTruncSize($contentparameters->GetTruncation());
-            $xml_data = new SimpleXMLElement($xml_vcard);
-            $message = $this->ParseFromVCard($xml_data->element[0]->vcard->__toString(), $truncsize);
-        }
-        
-        return $message;
-    }
-    
-
-    /**
-     * Returns message stats, analogous to the folder stats from StatFolder().
-     *
-     * @param string        $folderid       id of the folder
-     * @param string        $id             id of the message
-     *
-     * @access public
-     * @return array
-     */
-    public function StatMessage($folderid, $id) {
-        ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->StatMessage('%s', '%s')", $folderid, $id));
-//TODO: change to folderid
-//new from here
-       	try {
-            // We don't need the actual vcards here, we only need a list of all them
-            //$vcards = $this->server->get_list_vcards();
-            	$vcards = $this->server->do_sync(true, false);
-        	}
-        	catch (Exception $ex) {
-            	ZLog::Write(LOGLEVEL_ERROR, sprintf("BackendCardDAV->GetMessageList - Error getting the vcards: %s", $ex->getMessage()));
-        	}
-        
-        	if ($vcards === false) {
-            		ZLog::Write(LOGLEVEL_ERROR, sprintf("BackendCardDAV->GetMessageList - Error getting the vcards"));
-        	}
-		else {
-			$xml_vcards = new SimpleXMLElement($vcards);
-	     		foreach ($xml_vcards->element as $vcard) {
-                		$id_card = $vcard->id->__toString();
-                		$this->contactsetag[$id_card] = $vcard->etag->__toString();
-            			}
+	/**
+	 * Login to the CardDAV backend
+	 * @see IBackend::Logon()
+	 */
+	public function Logon($username, $domain, $password)
+	{
+		// Confirm PHP-CURL Installed; If Not, Exit
+		if (!function_exists("curl_init")) {
+			ZLog::Write(LOGLEVEL_ERROR, sprintf("ERROR: Carddav Backend requires PHP-CURL"));
+			return false;
 		}
-	if (empty($this->contactsetag[$id])){
+
+		$url = str_replace('%u', $username, CARDDAV_SERVER . ':' . CARDDAV_PORT . CARDDAV_PATH);
+		ZLog::Write(LOGLEVEL_INFO, sprintf("BackendCardDAV->Logon('%s')", $url));
+		$this->_carddav = new carddav_backend($url);
+		$this->_carddav->set_auth($username, $password);
+
+		if ($this->_carddav->check_connection())
+		{
+			ZLog::Write(LOGLEVEL_INFO, sprintf("BackendCardDAV->Logon(): User '%s' is authenticated on CardDAV", $username));
+			$this->url = $url;
+			return true;
+		}
+		else
+		{
+			ZLog::Write(LOGLEVEL_INFO, sprintf("BackendCardDAV->Logon(): User '%s' is not authenticated on CardDAV", $username));
+			return false;
+		}
+	}
+
+	/**
+	 * The connections to CardDAV are always directly closed. So nothing special needs to happen here.
+	 * @see IBackend::Logoff()
+	 */
+	public function Logoff()
+	{
+		return true;
+	}
+
+	/**
+	 * CardDAV doesn't need to handle SendMail
+	 * @see IBackend::SendMail()
+	 */
+	public function SendMail($sm)
+	{
 		return false;
 	}
-// new end
-        ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->StatMessage('%s', '%s')", $this->contactsetag[$id], $id));
-        $message = array();
-        $message["mod"] = $this->contactsetag[$id];
-        $message["id"] = $id;
-        $message["flags"] = 1;
-        $message["star"] = 0;
-        return $message;
-    }
 
-    /**
-     * Called when a message has been changed on the mobile.
-     * This functionality is not available for emails.
-     *
-     * @param string              $folderid            id of the folder
-     * @param string              $id                  id of the message
-     * @param SyncXXX             $message             the SyncObject containing a message
-     * @param ContentParameters   $contentParameters
-     *
-     * @access public
-     * @return array                        same return value as StatMessage()
-     * @throws StatusException              could throw specific SYNC_STATUS_* exceptions
-     */
-    public function ChangeMessage($folderid, $id, $message) {
-        ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->ChangeMessage('%s', '%s')", $folderid, $id));
-
-        $vcard_text = $this->ParseToVCard($message);
-        
-        if ($vcard_text === false) {
-            ZLog::Write(LOGLEVEL_ERROR, sprintf("BackendCardDAV->ChangeMessage - Error converting message to vCard"));
-        }
-        else {
-            ZLog::Write(LOGLEVEL_WBXML, sprintf("BackendCardDAV->ChangeMessage - vCard\n%s\n", $vcard_text));
-            
-            $updated = false;
-            if (strlen($id) == 0) {
-                //no id, new vcard
-                try {
-                    $updated = $this->server->add($vcard_text);
-                    if ($updated !== false) {
-                        $id = $updated;
-                    }
-                }
-                catch (Exception $ex) {
-                    ZLog::Write(LOGLEVEL_ERROR, sprintf("BackendCardDAV->ChangeMessage - Error adding vcard '%s' : %s", $id, $ex->getMessage()));
-                }
-            }
-            else {
-                //id, update vcard
-                try {
-                    $updated = $this->server->update($vcard_text, $id);
-                }
-                catch (Exception $ex) {
-                    ZLog::Write(LOGLEVEL_ERROR, sprintf("BackendCardDAV->ChangeMessage - Error updating vcard '%s' : %s", $id, $ex->getMessage()));
-                }
-            }
-            
-            if ($updated !== false) {
-                ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->ChangeMessage - vCard updated"));
-            }
-            else {
-                ZLog::Write(LOGLEVEL_ERROR, sprintf("BackendCardDAV->ChangeMessage - vCard not updated"));
-            }
-        }
-        
-        return $this->StatMessage($folderid, $id);
-    }   
-
-    /**
-     * Changes the 'read' flag of a message on disk
-     * Not implemented here
-     *
-     * @param string              $folderid            id of the folder
-     * @param string              $id                  id of the message
-     * @param int                 $flags               read flag of the message
-     * @param ContentParameters   $contentParameters
-     *
-     * @access public
-     * @return boolean                      status of the operation
-     * @throws StatusException              could throw specific SYNC_STATUS_* exceptions
-     */
-    public function SetReadFlag($folderid, $id, $flags) {
-        return false;
-    }
-
-    /**
-     * Changes the 'star' flag of a message on disk
-     * Not implemented here
-     *
-     * @param string        $folderid       id of the folder
-     * @param string        $id             id of the message
-     * @param int           $flags          star flag of the message
-     * @param ContentParameters   $contentParameters
-     *
-     * @access public
-     * @return boolean                      status of the operation
-     * @throws StatusException              could throw specific SYNC_STATUS_* exceptions
-     */
-    public function SetStarFlag($folderid, $id, $flags, $contentParameters) {
-        return false;
-    }
-
-    /**
-     * Called when the user has requested to delete (really delete) a message
-     *
-     * @param string              $folderid             id of the folder
-     * @param string              $id                   id of the message
-     * @param ContentParameters   $contentParameters
-     *
-     * @access public
-     * @return boolean                      status of the operation
-     * @throws StatusException              could throw specific SYNC_STATUS_* exceptions
-     */
-    public function DeleteMessage($folderid, $id) {
-        ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->DeleteMessage('%s', '%s')", $folderid, $id));
-        
-        $deleted = false;
-        try {
-            $deleted = $this->server->delete($id);
-        }
-        catch (Exception $ex) {
-            ZLog::Write(LOGLEVEL_ERROR, sprintf("BackendCardDAV->DeleteMessage - Error deleting vcard: %s", $ex->getMessage()));
-        }
-        
-        if ($deleted) {
-            ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->DeleteMessage - vCard deleted"));
-        } 
-        else {
-            ZLog::Write(LOGLEVEL_ERROR, sprintf("BackendCardDAV->DeleteMessage - cannot delete vCard"));
-        }
-        
-        return $deleted;
-    }
-
-    /**
-     * Called when the user moves an item on the PDA from one folder to another
-     * Not implemented here
-     *
-     * @param string              $folderid            id of the source folder
-     * @param string              $id                  id of the message
-     * @param string              $newfolderid         id of the destination folder
-     * @param ContentParameters   $contentParameters
-     *
-     * @access public
-     * @return boolean                      status of the operation
-     * @throws StatusException              could throw specific SYNC_MOVEITEMSSTATUS_* exceptions
-     */
-    public function MoveMessage($folderid, $id, $newfolderid) {
-        return false;
-    }
-
-    
-    /**
-     * Indicates which AS version is supported by the backend.
-     *
-     * @access public
-     * @return string       AS version constant
-     */
-    public function GetSupportedASVersion() {
-        return ZPush::ASV_14;
-    }
-
-
-    /**
-     * Returns the BackendCardDAV as it implements the ISearchProvider interface
-     * This could be overwritten by the global configuration
-     *
-     * @access public
-     * @return object       Implementation of ISearchProvider
-     */
-    public function GetSearchProvider() {
-        return $this;
-    }
-
-
-    /**----------------------------------------------------------------------------------------------------------
-     * public ISearchProvider methods
-     */
-
-    /**
-     * Indicates if a search type is supported by this SearchProvider
-     * Currently only the type ISearchProvider::SEARCH_GAL (Global Address List) is implemented
-     *
-     * @param string        $searchtype
-     *
-     * @access public
-     * @return boolean
-     */
-    public function SupportsType($searchtype) {
-        return ($searchtype == ISearchProvider::SEARCH_GAL);
-    }
-
-
-    /**
-     * Queries the CardDAV backend
-     *
-     * @param string        $searchquery        string to be searched for
-     * @param string        $searchrange        specified searchrange
-     *
-     * @access public
-     * @return array        search results
-     */
-    public function GetGALSearchResults($searchquery, $searchrange) {
-        ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->GetGALSearchResults(%s, %s)", $searchquery, $searchrange));
-        if (isset($this->server) && $this->server !== false) {
-            if (strlen($searchquery) < 5) {
-                return false;
-            }
-
-            ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->GetGALSearchResults searching: %s", $this->url));
-            try {
-                $this->server->enable_debug();
-                $vcards = $this->server->search_vcards(str_replace("<", "", str_replace(">", "", $searchquery)), 15, true, false);
-            }
-            catch (Exception $e) {
-                $vcards = false;
-                ZLog::Write(LOGLEVEL_ERROR, sprintf("BackendCardDAV->GetGALSearchResults : Error in search %s", $e->getMessage()));
-            }
-            var_dump($this->server->get_debug());
-            if ($vcards === false) {
-                ZLog::Write(LOGLEVEL_ERROR, "BackendCardDAV->GetGALSearchResults : Error in search query. Search aborted");
-                return false;
-            }
-            
-            $xml_vcards = new SimpleXMLElement($vcards);
-            unset($vcards);
-            
-            // range for the search results, default symbian range end is 50, wm 99,
-            // so we'll use that of nokia
-            $rangestart = 0;
-            $rangeend = 50;
-
-            if ($searchrange != '0') {
-                $pos = strpos($searchrange, '-');
-                $rangestart = substr($searchrange, 0, $pos);
-                $rangeend = substr($searchrange, ($pos + 1));
-            }
-            $items = array();
-
-            // TODO the limiting of the searchresults could be refactored into Utils as it's probably used more than once
-            $querycnt = $xml_vcards->count();
-            //do not return more results as requested in range
-            $querylimit = (($rangeend + 1) < $querycnt) ? ($rangeend + 1) : $querycnt == 0 ? 1 : $querycnt;
-            $items['range'] = $rangestart.'-'.($querylimit - 1);
-            $items['searchtotal'] = $querycnt;
-            
-            ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->GetGALSearchResults : %s entries found, returning %s to %s", $querycnt, $rangestart, $querylimit));
-            
-            $i = 0;
-            $rc = 0;
-            foreach ($xml_vcards->element as $xml_vcard) {
-                if ($i >= $rangestart && $i < $querylimit) {
-                    $contact = $this->ParseFromVCard($xml_vcard->vcard->__toString());
-                    if ($contact === false) {
-                        ZLog::Write(LOGLEVEL_ERROR, sprintf("BackendCardDAV->GetGALSearchResults : error converting vCard to AS contact\n%s\n", $xml_vcard->vcard->__toString()));
-                    }
-                    else {
-                        $items[$rc][SYNC_GAL_EMAILADDRESS] = $contact->email1address;
-                        if (isset($contact->fileas)) {
-                            $items[$rc][SYNC_GAL_DISPLAYNAME] = $contact->fileas;
-                        } 
-                        else if (isset($contact->firstname) || isset($contact->middlename) || isset($contact->lastname)) {
-                            $items[$rc][SYNC_GAL_DISPLAYNAME] = $contact->firstname . (isset($contact->middlename) ? " " . $contact->middlename : "") . (isset($contact->lastname) ? " " . $contact->lastname : "");
-                        }
-                        else {
-                            $items[$rc][SYNC_GAL_DISPLAYNAME] = $contact->email1address;
-                        }
-                        if (isset($contact->firstname)) {
-                            $items[$rc][SYNC_GAL_FIRSTNAME] = $contact->firstname;
-                        }
-                        else {
-                            $items[$rc][SYNC_GAL_FIRSTNAME] = "";
-                        }
-                        if (isset($contact->lastname)) {
-                            $items[$rc][SYNC_GAL_LASTNAME] = $contact->lastname;
-                        }
-                        else {
-                            $items[$rc][SYNC_GAL_LASTNAME] = "";
-                        }
-                        if (isset($contact->business2phonenumber)) {
-                            $items[$rc][SYNC_GAL_PHONE] = $contact->business2phonenumber;
-                        }
-                        if (isset($contact->home2phonenumber)) {
-                            $items[$rc][SYNC_GAL_HOMEPHONE] = $contact->home2phonenumber;
-                        }
-                        if (isset($contact->mobilephonenumber)) {
-                            $items[$rc][SYNC_GAL_MOBILEPHONE] = $contact->mobilephonenumber;
-                        }
-                        if (isset($contact->title)) {
-                            $items[$rc][SYNC_GAL_TITLE] = $contact->title;
-                        }
-                        if (isset($contact->companyname)) {
-                            $items[$rc][SYNC_GAL_COMPANY] = $contact->companyname;
-                        }
-                        if (isset($contact->department)) {
-                            $items[$rc][SYNC_GAL_OFFICE] = $contact->department;
-                        }
-                        if (isset($contact->nickname)) {
-                            $items[$rc][SYNC_GAL_ALIAS] = $contact->nickname;
-                        }
-                        unset($contact);
-                        $rc++;
-                    }
-                }
-                $i++;
-            }
-            
-            unset($xml_vcards);
-            return $items;
-        }
-        else {
-            unset($xml_vcards);
-            return false;
-        }
-    }
-
-    /**
-     * Searches for the emails on the server
-     *
-     * @param ContentParameter $cpo
-     *
-     * @return array
-     */
-    public function GetMailboxSearchResults($cpo) {
-        return false;
-    }
-
-    /**
-    * Terminates a search for a given PID
-    *
-    * @param int $pid
-    *
-    * @return boolean
-    */
-    public function TerminateSearch($pid) {
-        return true;
-    }
-
-    /**
-     * Disconnects from CardDAV
-     *
-     * @access public
-     * @return boolean
-     */
-    public function Disconnect() {
-        return true;
-    }
-    
-
-    /**----------------------------------------------------------------------------------------------------------
-     * private vcard-specific internals
-     */
-
-
-    /**
-     * Escapes a string
-     *
-     * @param string        $data           string to be escaped
-     *
-     * @access private
-     * @return string
-     */
-    private function escape($data){
-        if (is_array($data)) {
-            foreach ($data as $key => $val) {
-                $data[$key] = $this->escape($val);
-            }
-            return $data;
-        }
-        $data = str_replace("\r\n", "\n", $data);
-        $data = str_replace("\r", "\n", $data);
-        $data = str_replace(array('\\', ';', ',', "\n"), array('\\\\', '\\;', '\\,', '\\n'), $data);
-        return $data;
-    }
-
-    /**
-     * Un-escapes a string
-     *
-     * @param string        $data           string to be un-escaped
-     *
-     * @access private
-     * @return string
-     */
-    private function unescape($data){
-        $data = str_replace(array('\\\\', '\\;', '\\,', '\\n','\\N'),array('\\', ';', ',', "\n", "\n"),$data);
-        return $data;
-    }
-    
-    /**
-     * Converts the vCard into SyncContact
-     *
-     * @param string        $data           string with the vcard
-     * @param int           $truncsize      truncate size requested
-     * @return SyncContact
-     */
-    private function ParseFromVCard($data, $truncsize = -1) {
-        ZLog::Write(LOGLEVEL_WBXML, sprintf("BackendCardDAV->ParseFromVCard : vCard\n%s\n", $data));
-        
-        $types = array ('dom' => 'type', 'intl' => 'type', 'postal' => 'type', 'parcel' => 'type', 'home' => 'type', 'work' => 'type',
-            'pref' => 'type', 'voice' => 'type', 'fax' => 'type', 'msg' => 'type', 'cell' => 'type', 'pager' => 'type',
-            'bbs' => 'type', 'modem' => 'type', 'car' => 'type', 'isdn' => 'type', 'video' => 'type',
-            'aol' => 'type', 'applelink' => 'type', 'attmail' => 'type', 'cis' => 'type', 'eworld' => 'type',
-            'internet' => 'type', 'ibmmail' => 'type', 'mcimail' => 'type',
-            'powershare' => 'type', 'prodigy' => 'type', 'tlx' => 'type', 'x400' => 'type',
-            'gif' => 'type', 'cgm' => 'type', 'wmf' => 'type', 'bmp' => 'type', 'met' => 'type', 'pmb' => 'type', 'dib' => 'type',
-            'pict' => 'type', 'tiff' => 'type', 'pdf' => 'type', 'ps' => 'type', 'jpeg' => 'type', 'qtime' => 'type',
-            'mpeg' => 'type', 'mpeg2' => 'type', 'avi' => 'type',
-            'wave' => 'type', 'aiff' => 'type', 'pcm' => 'type',
-            'x509' => 'type', 'pgp' => 'type', 'text' => 'value', 'inline' => 'value', 'url' => 'value', 'cid' => 'value', 'content-id' => 'value',
-            '7bit' => 'encoding', '8bit' => 'encoding', 'quoted-printable' => 'encoding', 'base64' => 'encoding',
-        );
-
-        // Parse the vcard
-        $message = new SyncContact();
-
-        $data = str_replace("\x00", '', $data);
-        $data = str_replace("\r\n", "\n", $data);
-        $data = str_replace("\r", "\n", $data);
-        $data = preg_replace('/(\n)([ \t])/i', '', $data);
-
-        $lines = explode("\n", $data);
-
-        $vcard = array();
-        foreach($lines as $line) {
-            if (trim($line) == '')
-                continue;
-            $pos = strpos($line, ':');
-            if ($pos === false)
-                continue;
-
-            $field = trim(substr($line, 0, $pos));
-            $value = trim(substr($line, $pos+1));
-
-            $fieldparts = preg_split('/(?<!\\\\)(\;)/i', $field, -1, PREG_SPLIT_NO_EMPTY);
-
-            $type = strtolower(array_shift($fieldparts));
-
-            $fieldvalue = array();
-
-            foreach ($fieldparts as $fieldpart) {
-                if(preg_match('/([^=]+)=(.+)/', $fieldpart, $matches)){
-                    if(!in_array(strtolower($matches[1]),array('value','type','encoding','language')))
-                        continue;
-                    if(isset($fieldvalue[strtolower($matches[1])]) && is_array($fieldvalue[strtolower($matches[1])])){
-                        $fieldvalue[strtolower($matches[1])] = array_merge($fieldvalue[strtolower($matches[1])], preg_split('/(?<!\\\\)(\,)/i', $matches[2], -1, PREG_SPLIT_NO_EMPTY));
-                    }else{
-                        $fieldvalue[strtolower($matches[1])] = preg_split('/(?<!\\\\)(\,)/i', $matches[2], -1, PREG_SPLIT_NO_EMPTY);
-                    }
-                }else{
-                    if(!isset($types[strtolower($fieldpart)]))
-                        continue;
-                    $fieldvalue[$types[strtolower($fieldpart)]][] = $fieldpart;
-                }
-            }
-            //
-            switch ($type) {
-                case 'categories':
-                     $val = preg_split('/(?<!\\\\)(\,)/i', $value);
-                    break;
-                default:
-                    $val = preg_split('/(?<!\\\\)(\;)/i', $value);
-                    break;
-            }
-            if(isset($fieldvalue['encoding'][0])){
-                switch(strtolower($fieldvalue['encoding'][0])){
-                    case 'q':
-                    case 'quoted-printable':
-                        foreach($val as $i => $v){
-                            $val[$i] = quoted_printable_decode($v);
-                        }
-                        break;
-                    case 'b':
-                    case 'base64':
-                        foreach($val as $i => $v){
-                            $val[$i] = base64_decode($v);
-                        }
-                        break;
-                }
-            }else{
-                foreach($val as $i => $v){
-                    $val[$i] = $this->unescape($v);
-                }
-            }
-            $fieldvalue['val'] = $val;
-            $vcard[$type][] = $fieldvalue;
-        }
-
-        if(isset($vcard['email'])){
-		foreach($vcard['email'] as $mail){
-			if (!empty($mail['val'][0])){
-				If (empty($message->email1address)){
-					$message->email1address = $mail['val'][0];
-				}elseif (empty($message->email2address)){
-					$message->email2address = $mail['val'][0];
-				}elseif (empty($message->email3address)){
-					$message->email3address = $mail['val'][0];
-				}elseif((strpos($vcard['note'][0]['val'][0],$mail['val'][0])) === false){
-					$vcard['note'][0]['val'][0] = 'EMAIL#TYPE=' . $mail['type'][0] . ':' . $mail['val'][0] . chr(13) . chr(10) . $vcard['note'][0]['val'][0];
-				}
-			}
-		}
+	/**
+	 * No attachments in CardDAV
+	 * @see IBackend::GetAttachmentData()
+	 */
+	public function GetAttachmentData($attname)
+	{
+		return false;
 	}
-        if(isset($vcard['impp'])){
-		foreach($vcard['impp'] as $impp){
-			if (!empty($impp['val'][0])){
-				If (empty($message->imaddress)){
-					$message->imaddress = $impp['val'][0];
-				}elseif (empty($message->imaddress2)){
-					$message->imaddress2 = $impp['val'][0];
-				}elseif (empty($message->imaddress3)){
-					$message->imaddress3 = $impp['val'][0];
-				}elseif((strpos($vcard['note'][0]['val'][0],$impp['val'][0])) === false){
-					$vcard['note'][0]['val'][0] = 'IMPP#TYPE=' . $impp['type'][0] . ':' . $impp['val'][0] . chr(13) . chr(10) . $vcard['note'][0]['val'][0];
-				}
-			}
-		}
+
+	/**
+	 * Deletes are always permanent deletes. Messages doesn't get moved.
+	 * @see IBackend::GetWasteBasket()
+	 */
+	public function GetWasteBasket()
+	{
+		return false;
 	}
+
+	/**
+	 * Only 1 addressbook allowed.
+	 * @see BackendDiff::GetFolderList()
+	 */
+	public function GetFolderList()
+	{
+		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->GetFolderList(): Getting all folders."));
 		
+		$folderlist = array();
+		$folderlist[] = $this->StatFolder(CARDDAV_PRINCIPAL);
 
-/*
-	 if(isset($vcard['email'][0]['val'][0]))
-            $message->email1address = $vcard['email'][0]['val'][0];
-        if(isset($vcard['email'][1]['val'][0]))
-            $message->email2address = $vcard['email'][1]['val'][0];
-        if(isset($vcard['email'][2]['val'][0]))
-            $message->email3address = $vcard['email'][2]['val'][0];
-*/
+		return $folderlist;
+	}
 
-        if(isset($vcard['tel'])){
-            foreach($vcard['tel'] as $tel) {
-                if(is_array($tel['type'])){
-	              if(in_array('HOME', $tel['type'])){
-               		if(empty($message->homephonenumber)){
-                        		$message->homephonenumber = $tel['val'][0];
-                    		}elseif(empty($message->home2phonenumber)){
-					if(in_array('PREF', $tel['type'])){
-						$message->home2phonenumber = $message->homephonenumber;					
-						$message->homephonenumber = $tel['val'][0];
-					}else{
-	                        		$message->home2phonenumber = $tel['val'][0];
-					}
-                    		}elseif((strpos($vcard['note'][0]['val'][0],$tel['val'][0])) === false){
-					$vcard['note'][0]['val'][0] = 'TEL#TYPE=HOME;TYPE=OTHER:' . $tel['val'][0] . chr(13) . chr(10) . $vcard['note'][0]['val'][0];
-				}
-                	 }elseif(in_array('CAR', $tel['type'])){
-                    			if(empty($message->carphonenumber)){
-						$message->carphonenumber = $tel['val'][0];
-					}
-					elseif((strpos($vcard['note'][0]['val'][0],$tel['val'][0])) === false){
-						$vcard['note'][0]['val'][0] = 'TEL#TYPE=CAR#TYPE=OTHER:' . $tel['val'][0] . chr(13) . chr(10) . $vcard['note'][0]['val'][0];
-					}
-                	}elseif(in_array('PAGER', $tel['type'])){
-				if(empty($message->pagernumber)){
-	                    		$message->pagernumber = $tel['val'][0];
-				}
-				elseif((strpos($vcard['note'][0]['val'][0],$tel['val'][0])) === false){
-					$vcard['note'][0]['val'][0] = 'TEL#TYPE=PAGER#TYPE=OTHER:' . $tel['val'][0] . chr(13) . chr(10) . $vcard['note'][0]['val'][0];
-				}
-                	}elseif(in_array('CELL', $tel['type'])){
-				if(empty($message->mobilephonenumber)){
-                    			$message->mobilephonenumber = $tel['val'][0];
-				}elseif((strpos($vcard['note'][0]['val'][0],$tel['val'][0]) === false)){
-					$vcard['note'][0]['val'][0] = 'TEL#TYPE=CELL#TYPE=OTHER:' . $tel['val'][0] . chr(13) . chr(10) . $vcard['note'][0]['val'][0];
-				}	
-                	}elseif(in_array('WORK', $tel['type'])){
-                    		if(empty($message->businessphonenumber)){
-                        		$message->businessphonenumber = $tel['val'][0];
-                    		}elseif(empty($message->business2phonenumber)){
-					if(in_array('PREF', $tel['type'])){
-						$message->business2phonenumber = $message->businessphonenumber;					
-						$message->businessphonenumber = $tel['val'][0];
-					}else{
-                        			$message->business2phonenumber = $tel['val'][0];
-					}
-                    		}elseif(empty($message->companymainphone)){
-                   			$message->companymainphone = $tel['val'][0];
-               		}elseif((strpos($vcard['note'][0]['val'][0],$tel['val'][0])) === false){
-					$vcard['note'][0]['val'][0] = 'TEL#TYPE=WORK#TYPE=OTHER:' . $tel['val'][0] . chr(13) . chr(10) . $vcard['note'][0]['val'][0];
-				}	
-			}elseif(in_array('FAX', $tel['type'])){
-				if(in_array('HOME', $tel['type'])){
-                        		if(empty($message->homefaxnumber)){
-						$message->homefaxnumber = $tel['val'][0];
-					}
-					elseif((strpos($vcard['note'][0]['val'][0],$tel['val'][0])) === false){
-						$vcard['note'][0]['val'][0] = 'TEL#TYPE=FAX#TYPE=HOME#TYPE=OTHER:' . $tel['val'][0] . chr(13) . chr(10) . $vcard['note'][0]['val'][0];
-					}
-				}elseif(in_array('WORK', $tel['type'])){
-	                    		if(empty($message->businessfaxnumber)){
-       	                 		$message->businessfaxnumber = $tel['val'][0];
-                    			}elseif((strpos($vcard['note'][0]['val'][0],$tel['val'][0])) === false){
-						$vcard['note'][0]['val'][0] = 'TEL#TYPE=FAX#TYPE=WORK#TYPE=OTHER:' . $tel['val'][0] . chr(13) . chr(10) . $vcard['note'][0]['val'][0];
-					}
-				}else{
-					if(empty($message->businessfaxnumber)){
-						$message->businessfaxnumber = $tel['val'][0];
-					}elseif(empty($message->homefaxnumber)){
-						$message->homefaxnumber = $tel['val'][0];
-                    			}elseif((strpos($vcard['note'][0]['val'][0],$tel['val'][0])) === false){
-						$vcard['note'][0]['val'][0] = 'TEL#TYPE=FAX#TYPE=OTHER:' . $tel['val'][0] . chr(13) . chr(10) . $vcard['note'][0]['val'][0];
-					}
-				}
-			}elseif(in_array('TEXT', $tel['type'])){
-				if(empty($message->mms)){
-       	                 		$message->mms = $tel['val'][0];
-                    			}elseif((strpos($vcard['note'][0]['val'][0],$tel['val'][0])) === false){
-						$vcard['note'][0]['val'][0] = 'TEL#TYPE=TEXT#TYPE=OTHER:'. $tel['val'][0] . chr(13) . chr(10) . $vcard['note'][0]['val'][0];
-					}
-			}elseif(in_array('OTHER', $tel['type'])){
-				if(empty($message->radiophonenumber)){
-       	                 		$message->radiophonenumber = $tel['val'][0];
-                    			}elseif((strpos($vcard['note'][0]['val'][0],$tel['val'][0])) === false){
-						$vcard['note'][0]['val'][0] = 'TEL#TYPE=OTHER#TYPE=OTHER:'. $tel['val'][0] . chr(13) . chr(10) . $vcard['note'][0]['val'][0];
-					}
-			}elseif(in_array('MSG', $tel['type'])){
-				if(empty($message->companymainphone)){
-       	                 		$message->companymainphone = $tel['val'][0];
-                    			}elseif((strpos($vcard['note'][0]['val'][0],$tel['val'][0])) === false){
-						$vcard['note'][0]['val'][0] = 'TEL#TYPE=MSG#TYPE=OTHER:'. $tel['val'][0] . chr(13) . chr(10) . $vcard['note'][0]['val'][0];
-					}
-			}elseif(in_array('VOICE', $tel['type'])){
-					if(empty($message->assistnamephonenumber)){
-       	                 		$message->assistnamephonenumber = $tel['val'][0];
- 					
-                    			}elseif((strpos($vcard['note'][0]['val'][0],$tel['val'][0])) === false){
-						$vcard['note'][0]['val'][0] = 'TEL#TYPE=VOICE#TYPE=OTHER:'. $tel['val'][0] . chr(13) . chr(10) . $vcard['note'][0]['val'][0];
-					}
-			
-		   	}elseif(strpos($vcard['note'][0]['val'][0],$tel['val'][0]) === false){
-			$vcard['note'][0]['val'][0] = 'TEL:'. $tel['val'][0] . chr(13) . chr(10) . $vcard['note'][0]['val'][0];
-		   	}
-            	}
+	/**
+	 * Returning a SyncFolder
+	 * @see BackendDiff::GetFolder()
+	 */
+	public function GetFolder($id)
+	{
+		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->GetFolder('%s')", $id));
+		
+		$folder = new SyncFolder();
+		$folder->serverid = CARDDAV_PRINCIPAL;
+		$folder->displayname = "CardDAV AddressBook";
+		$folder->parentid = "0";
+		$folder->type = SYNC_FOLDER_TYPE_USER_CONTACT;
+
+		return $folder;
+	}
+
+	/**
+	 * Returns information on the folder.
+	 * @see BackendDiff::StatFolder()
+	 */
+	public function StatFolder($id)
+	{
+		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->StatFolder('%s')", $id));
+
+		$val = $this->GetFolder($id);
+		$folder = array();
+		$folder["id"] = $id;
+		$folder["parent"] = $val->parentid;
+		$folder["mod"] = $val->displayname;
+		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->StatFolder(Abook Id [%s] Abook Name [%s])", $folder["id"], $folder["mod"]));
+		return $folder;
+	}
+
+	/**
+	 * ChangeFolder is not supported under CardDAV
+	 * @see BackendDiff::ChangeFolder()
+	 */
+	public function ChangeFolder($folderid, $oldid, $displayname, $type)
+	{
+		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->ChangeFolder('%s','%s','%s','%s')", $folderid, $oldid, $displayname, $type));
+		return false;
+	}
+
+	/**
+	 * DeleteFolder is not supported under CardDAV
+	 * @see BackendDiff::DeleteFolder()
+	 */
+	public function DeleteFolder($id, $parentid)
+	{
+		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->DeleteFolder('%s','%s')", $id, $parentid));
+		return false;
+	}
+
+	/**
+	 * Get a list of all the messages.
+	 * @see BackendDiff::GetMessageList()
+	 */
+	public function GetMessageList($folderid, $cutoffdate)
+	{
+		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->GetMessageList('%s','%s')", $folderid, $cutoffdate));
+
+		// Get list of vcard for one addressbook ($folderid)
+		// for each vcard send the etag as MOD and the UID as ID
+
+		$messagelist = array();
+		$url = $this->url . $folderid . "/";
+		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->GetMessageList('%s')", $url));
+		$this->_carddav->set_url($url);
+		$vcardlist = $this->_carddav->get_all_vcards(false, false);
+		if ($vcardlist === false)
+		{
+			ZLog::Write(LOGLEVEL_WARN, sprintf("BackendCardDAV->GetMessageList(): Empty AddressBook"));
+			return $messagelist;
 		}
-        }
-        //;;street;city;state;postalcode;country
-        if(isset($vcard['adr'])){
-            foreach($vcard['adr'] as $adr) {
-                if(empty($adr['type'])){
-                    $a = 'other';
-                }elseif(in_array('HOME', $adr['type'])){
-                    $a = 'home';
-                }elseif(in_array('WORK', $adr['type'])){
-                    $a = 'business';
-                }else{
-                    $a = 'other';
-                }
-                if(!empty($adr['val'][2])){
-                    $b=$a.'street';
-                    $message->$b = $adr['val'][2];
-                }
-                if(!empty($adr['val'][3])){
-                    $b=$a.'city';
-                    $message->$b = $adr['val'][3];
-                }
-                if(!empty($adr['val'][4])){
-                    $b=$a.'state';
-                    $message->$b = $adr['val'][4];
-                }
-                if(!empty($adr['val'][5])){
-                    $b=$a.'postalcode';
-                    $message->$b = $adr['val'][5];
-                }
-                if(!empty($adr['val'][6])){
-                    $b=$a.'country';
-                    $message->$b = $adr['val'][6];
-                }
-            }
-        }
-
-        if(!empty($vcard['fn'][0]['val'][0]))
-            $message->fileas = $vcard['fn'][0]['val'][0];
-        if(!empty($vcard['n'][0]['val'][0]))
-            $message->lastname = $vcard['n'][0]['val'][0];
-        if(!empty($vcard['n'][0]['val'][1]))
-            $message->firstname = $vcard['n'][0]['val'][1];
-        if(!empty($vcard['n'][0]['val'][2]))
-            $message->middlename = $vcard['n'][0]['val'][2];
-        if(!empty($vcard['n'][0]['val'][3]))
-            $message->title = $vcard['n'][0]['val'][3];
-        if(!empty($vcard['n'][0]['val'][4]))
-            $message->suffix = $vcard['n'][0]['val'][4];
-        if(!empty($vcard['nickname'][0]['val'][0]))
-            $message->nickname = $vcard['nickname'][0]['val'][0];
-        if(!empty($vcard['bday'][0]['val'][0])){
-            $tz = date_default_timezone_get();
-            date_default_timezone_set('UTC');
-            $message->birthday = strtotime($vcard['bday'][0]['val'][0]);
-            date_default_timezone_set($tz);
-        }
-        if(!empty($vcard['org'][0]['val'][0]))
-            $message->companyname = $vcard['org'][0]['val'][0];
-        if(!empty($vcard['note'][0]['val'][0])){
-            if (Request::GetProtocolVersion() >= 12.0) {
-                $message->asbody = new SyncBaseBody();
-                $message->asbody->type = SYNC_BODYPREFERENCE_PLAIN;
-                $message->asbody->data = $vcard['note'][0]['val'][0];
-                if ($truncsize > 0 && $truncsize < strlen($message->asbody->data)) {
-                    $message->asbody->truncated = 1;
-                    $message->asbody->data = Utils::Utf8_truncate($message->asbody->data, $truncsize);
-                }
-                else {
-                    $message->asbody->truncated = 0;
-                }
-                
-                $message->asbody->estimatedDataSize = strlen($message->asbody->data);                
-            }
-            else {
-                $message->body = $vcard['note'][0]['val'][0];
-                if ($truncsize > 0 && $truncsize < strlen($message->body)) {
-                    $message->bodytruncated = 1;
-                    $message->body = Utils::Utf8_truncate($message->body, $truncsize);
-                }
-                else {
-                    $message->bodytruncated = 0;
-                }
-                $message->bodysize = strlen($message->body);
-            }
-        }
-	 if(!empty($vcard['role'][0]['val'][0]))
-            $message->jobtitle = $vcard['role'][0]['val'][0];//$vcard['title'][0]['val'][0]
-        if(!empty($vcard['url'][0]['val'][0]))
-            $message->webpage = $vcard['url'][0]['val'][0];
-        if(!empty($vcard['categories'][0]['val']))
-            $message->categories = $vcard['categories'][0]['val'];
-
-        if(!empty($vcard['photo'][0]['val'][0]))
-            $message->picture = base64_encode($vcard['photo'][0]['val'][0]);
-
-        return $message;
-    }
-    
-    /**
-     * Convert a SyncObject into vCard.
-     *
-     * @param SyncContact           $message        AS Contact
-     * @return string               vcard text
-     */
-    private function ParseToVCard($message) {  
-	 $adrmapping = array(
-	     ';;businessstreet;businesscity;businessstate;businesspostalcode;businesscountry' => 'ADR;TYPE=WORK',
-            ';;homestreet;homecity;homestate;homepostalcode;homecountry' => 'ADR;TYPE=HOME',
-            ';;otherstreet;othercity;otherstate;otherpostalcode;othercountry' => 'ADR;TYPE=OTHER'
-	 );  
-        $mapping = array(
-            'lastname;firstname;middlename;title;suffix' => 'N',
-            'email1address' => 'EMAIL;TYPE=WORK;TYPE=PREF',
-            'email2address' => 'EMAIL;TYPE=HOME',
-            'email3address' => 'EMAIL;TYPE=OTHER',
-            'businessphonenumber' => 'TEL;TYPE=WORK;TYPE=PREF',
-            'business2phonenumber' => 'TEL;TYPE=WORK',
-	     'companymainphone' => 'TEL;TYPE=MSG',
-            'businessfaxnumber' => 'TEL;TYPE=FAX;TYPE=WORK',
-            'homephonenumber' => 'TEL;TYPE=HOME;TYPE=PREF',
-            'home2phonenumber' => 'TEL;TYPE=HOME',
-            'homefaxnumber' => 'TEL;TYPE=FAX;TYPE=HOME',
-            'mobilephonenumber' => 'TEL;TYPE=CELL',
-            'carphonenumber' => 'TEL;TYPE=CAR',
-            'pagernumber' => 'TEL;TYPE=PAGER',
-	     'mms' => 'TEL;TYPE=TEXT',
-	     'radiophonenumber' => 'TEL;TYPE=OTHER',
-	     'assistnamephonenumber' =>  'TEL;TYPE=VOICE',
-            'companyname' => 'ORG',
-            'jobtitle' => 'ROLE',
-            'webpage' => 'URL',
-            'nickname' => 'NICKNAME',
-	     'imaddress' => 'IMPP',
-	     'imaddress2' => 'IMPP',
-	     'imaddress3' => 'IMPP'
-        );
-/* 	$name_fields = array(
-	      'firstname',
-	      'middlename', 
-              'lastname'
-	);
-*/
-	// start baking the vcard 
-	$data = "BEGIN:VCARD\nVERSION:3.0\nPRODID:Z-Push\n";
-/*	if (empty($message->$fileas)) {
-		$names = array();
-		foreach ($name_fields as $field) {
-			if (isset($message->$field) && !empty($message->$field))
-				$names[] = $message->$field;
+		$xmlvcardlist = new SimpleXMLElement($vcardlist);
+		foreach ($xmlvcardlist->element as $vcard)
+		{
+			$id = (string)$vcard->id->__toString();
+			ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->GetMessageList(Add vcard to collection '%s')", $vcard->vcard->__toString()));
+			$this->_collection[$id] = $vcard;
+			$messagelist[] = $this->StatMessage($folderid, $id);
 		}
-		if (count($names) !== 0) {
-			$data .= 'FN:' . implode(' ', $names) . "\n";
+		return $messagelist;
+	}
+
+	/**
+	 * Get a SyncObject by its ID
+	 * @see BackendDiff::GetMessage()
+	 */
+	public function GetMessage($folderid, $id, $contentparameters)
+	{
+		// for one vcard ($id) of one addressbook ($folderid)
+		// send all vcard details in a SyncContact format
+		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->GetMessage('%s','%s')", $folderid,  $id));
+
+		$data = null;
+		// We have an ID and the vcard data
+		if (array_key_exists($id, $this->_collection) && isset($this->_collection[$id]->vcard))
+		{
+			ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->GetMessage(array_key_exists and vcard)"));
 		}
-	}
-	else {
-		$data .= 'FN:' . $message->$fileas . "\n";
-	}
-*/
-// using BuildFileAs($lastname = "", $firstname = "", $middlename = "", $company = "") from utils.php defined in config-php via FILEAS_ORDER
-	if (empty($message->fileas) || FILEAS_ALLWAYSOVERRIDE === true) {
-	 	$data .= 'FN:' . Utils::BuildFileAs($message->lastname, $message->firstname, $message->middlename, $message->company). "\n";
-	}
-	else{
-		$data .= 'FN:' . $message->fileas . "\n";
-	}
-        foreach($adrmapping as $adrk => $adrv){
-            $adrval = null;
-            $adrks = explode(';', $adrk);
-            foreach($adrks as $adri){
-                if((!empty($message->$adri)) && ($message->$adri != '')){
-                    $adrval .= $this->escape($message->$adri);
-		  }
-		  $adrval.=';';
-            }
-            if((empty($adrval)) || (str_replace(';' , '' , $adrval) == '') )
-                continue;
-            $adrval = substr($adrval,0,-1);
-            if(strlen($adrval)>50){
-                $data .= $adrv.":\n ". chunk_split($adrval, 50, "\n ");
-		  $data .= "\n";
-            }else{
-                $data .= $adrv.':'.$adrval."\n";
-            }
-        }
-        foreach($mapping as $k => $v){
-            $val = null;
-            $ks = explode(';', $k);
-            foreach($ks as $i){
-                if((!empty($message->$i)) && ($message->$i != '')){
-                    $val .= $this->escape($message->$i);
-                    $val.=';';
-		  }
-            }
-            if(empty($val))
-                continue;
-            $val = substr($val,0,-1);
-            if(strlen($val)>50){
-                $data .= $v;
-		  $data .= ":\n " . chunk_split($val, 50, "\n ");
-		  $data .= "\n";
-            }else{
-                $data .= $v.':'.$val."\n";
-            }
-        }
-	 if(isset($message->birthday))
-            $data .= 'BDAY:'.date('Y-m-d', $message->birthday)."\n";
-        if(!empty($message->categories))
-            $data .= 'CATEGORIES:'.implode(',', $this->escape($message->categories))."\n";
-        if(isset($message->body))
-		$data .= 'NOTE:\n ' . str_replace('\n' , '\n ' , $message->body). "\n ";
-        if(!empty($message->picture)){
-            $data .= 'PHOTO;ENCODING=BASE64;TYPE=JPEG:'."\n ".chunk_split($message->picture, 50, "\n ");
-	     $data .= "\n";
-	 }
-        $data .= "\nEND:VCARD";
+		else
+		{
+			$url = $this->url . $folderid . "/";
+			$this->_carddav->set_url($url);
+			ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->GetMessage('%s')", $url));
+			$xmldata = $this->_carddav->get_xml_vcard($id);
+			if ($xmldata === false)
+			{
+				ZLog::Write(LOGLEVEL_WARN, sprintf("BackendCardDAV->GetMessage(): vCard not found"));
+				return false;
+			}
 
+			$xmlvcard = new SimpleXMLElement($xmldata);
+			foreach($xmlvcard->element as $vcard)
+			{
+				$this->_collection[$id] = $vcard;
+			}
+		}
+		$data = (string)$this->_collection[$id]->vcard->__toString();
+		return $this->_ParseVCardToAS($data, $contentparameters);
+	}
 
-        // http://en.wikipedia.org/wiki/VCard
-        // TODO: add support for v4.0
-        // not supported: anniversary, assistantname, assistnamephonenumber, children, department, officelocation, radiophonenumber, spouse, rtf
+	/**
+	 * Return id, flags and mod of a messageid
+	 * @see BackendDiff::StatMessage()
+	 */
+	public function StatMessage($folderid, $id)
+	{
+		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->StatMessage('%s','%s')", $folderid,  $id));
 
-        return $data;
-    }
-    
-};
+		// for one vcard ($id) of one addressbook ($folderid)
+		// send the etag as mod and the UUID as id
+		// the same as in GetMsgList
+
+		$data = null;
+		// We have an ID and no vcard data
+		if (array_key_exists($id, $this->_collection) && isset($this->_collection[$id]->id) && isset($this->_collection[$id]->etag))
+		{
+			ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->StatMessage(array_key_exists)"));
+		}
+		else
+		{
+			$url = $this->url . $folderid . "/";
+			$this->_carddav->set_url($url);
+			ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->StatMessage('%s')", $url));
+			$xmldata = $this->_carddav->get_xml_vcard($id);
+			if ($xmldata === false)
+			{
+				ZLog::Write(LOGLEVEL_WARN, sprintf("BackendCardDAV->StatMessage(): VCard not found"));
+				return false;
+			}
+			$xmlvcard = new SimpleXMLElement($xmldata);
+			foreach($xmlvcard->element as $vcard)
+			{
+				$this->_collection[$id] = $vcard;
+			}
+			ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->StatMessage(get_xml_vcard true)"));
+		}
+		$data = $this->_collection[$id];
+		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->StatMessage(id '%s', mod '%s')", $data->id->__toString(), $data->etag->__toString()));
+		$message = array();
+		$message['id'] = (string)$data->id->__toString();
+		$message['flags'] = "1";
+		$message['mod'] = (string)$data->etag->__toString();
+		return $message;
+	}
+
+	/**
+	 * Change/Add a message with contents received from ActiveSync
+	 * @see BackendDiff::ChangeMessage()
+	 */
+	public function ChangeMessage($folderid, $id, $message)
+	{
+		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->ChangeMessage('%s','%s')", $folderid,  $id));
+		if (defined(CARDDAV_READONLY) && CARDDAV_READONLY)
+		{
+			return false;
+		}
+
+		$data = null;
+		$UUID = null;
+		if ($id)
+		{
+			$data = $this->_ParseASCardToVCard($message, $id);
+		}
+		else
+		{
+			$UUID = $this->generate_uuid();
+			$data = $this->_ParseASCardToVCard($message, $UUID);
+		}
+
+		$url = $this->url . $folderid . "/";
+		$this->_carddav->set_url($url);
+		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->ChangeMessage('%s')", $url));
+
+		if ($id)
+		{
+			$this->_carddav->update($data, $id);
+		}
+		else
+		{
+			$id = $this->_carddav->add($data, str_replace(".vcf", null, $UUID));
+		}
+
+		return $this->StatMessage($folderid, $id);
+	}
+
+	/**
+	 * Change the read flag is not supported.
+	 * @see BackendDiff::SetReadFlag()
+	 */
+	public function SetReadFlag($folderid, $id, $flags)
+	{
+		return false;
+	}
+
+	/**
+	 * Delete a message from the CardDAV server.
+	 * @see BackendDiff::DeleteMessage()
+	 */
+	public function DeleteMessage($folderid, $id)
+	{
+		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->DeleteMessage('%s','%s')", $folderid,  $id));
+		if (defined(CARDDAV_READONLY) && CARDDAV_READONLY)
+		{
+			return false;
+		}
+		$url = $this->url . $folderid . "/";
+		$this->_carddav->set_url($url);
+		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->DeleteMessage('%s')", $url));
+		return $this->_carddav->delete($id);
+	}
+
+	/**
+	 * Move a message is not supported by CardDAV.
+	 * @see BackendDiff::MoveMessage()
+	 */
+	public function MoveMessage($folderid, $id, $newfolderid)
+	{
+		return false;
+	}
+
+	/**
+	 * Convert a VCard to ActiveSync format
+	 * @param vcard $data
+	 * @param ContentParameters $contentparameters
+	 * @return SyncContact
+	 */
+	private function _ParseVCardToAS($data, $contentparameters)
+	{
+		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->_ParseVCardToAS(vCard[%s])", $data));
+		$truncsize = Utils::GetTruncSize($contentparameters->GetTruncation());
+
+		$vCard = new vCard(false, $data);
+		if (count($vCard) != 1)
+		{
+			ZLog::Write(LOGLEVEL_WARN, sprintf("BackendCardDAV->_ParseVCardToAS(): Error parsing vCard[%s]", $data));
+			return false;
+		}
+
+		$card = $vCard->access();
+
+		$mapping = array(
+			'fn' => 'fileas',
+			'n' => array('LastName' => 'lastname', 'FirstName' => 'firstname'),
+			//'nickname' => 'nickname', // handle manually
+			'tel' => array('home' => 'homephonenumber',
+						'cell' => 'mobilephonenumber',
+						'work' => 'businessphonenumber',
+						'fax' => 'businessfaxnumber',
+						'pager' => 'pagernumber'),
+			'email' => array('work' => 'email1address', 'home' => 'email2address'),
+			'url' => array('work' => 'webpage', 'home' => 'webpage'), // does not exist in ActiveSync
+			'bday' => 'birthday',
+			//'role' => 'jobtitle', iOS take it as 'TITLE' Does not make sense??
+			'title' => 'jobtitle',
+			'note' => 'body',
+			'org' => array('Name' => 'companyname', 'Unit1' => 'department'),
+			'adr' => array ('work' =>
+								array('POBox' => '',
+									'ExtendedAddress' => '',
+									'StreetAddress' => 'businessstreet',
+									'Locality' => 'businesscity',
+									'Region' => 'businessstate',
+									'PostalCode' => 'businesspostalcode',
+									'Country' => 'businesscountry'),
+								'home' =>
+								array('POBox' => '',
+									'ExtendedAddress' => '',
+									'StreetAddress' => 'homestreet',
+									'Locality' => 'homecity',
+									'Region' => 'homestate',
+									'PostalCode' => 'homepostalcode',
+									'Country' => 'homecountry')
+			),
+			'photo' => array('jpeg' => 'picture'),
+			//'categories' => 'categories', // handle manually
+			'x-aim' => 'imaddress',
+		);
+
+		$message = new SyncContact();
+
+		foreach ($mapping as $vcard_attribute => $ms_attribute)
+		{
+			ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->_ParseVCardToAS(vCard[%s] => ms[%s])", $vcard_attribute, $ms_attribute));
+			if (empty($card[$vcard_attribute]))
+			{
+				continue;
+			}
+			if (is_array($card[$vcard_attribute]))
+			{
+				// tel;email;url;org
+				foreach ($card[$vcard_attribute] as $key => $value) {
+					if (empty($value) || empty($ms_attribute[$key]))
+					{
+						continue;
+					}
+					// adr
+					if (is_array($value))
+					{
+						foreach ($value as $adrkey => $adrvalue) {
+							if (empty($adrvalue) || empty($ms_attribute[$key][$adrkey]))
+							{
+								continue;
+							}
+							$message->$ms_attribute[$key][$adrkey] = $adrvalue;
+						}
+					}
+					else
+					{
+					 $message->$ms_attribute[$key] = $value;
+					}
+				}
+			}
+			else
+			{
+				if ($vcard_attribute === "note" && !empty($card[$vcard_attribute]))
+				{
+					$body = $card[$vcard_attribute];
+					// truncate body, if requested
+					if(strlen($body) > $truncsize) {
+						$body = Utils::Utf8_truncate($body, $truncsize);
+						$message->bodytruncated = 1;
+					} else {
+						$body = $body;
+						$message->bodytruncated = 0;
+					}
+					$body = str_replace("\n","\r\n", str_replace("\r","",$body));
+					$message->body = $body;
+					$message->bodysize = strlen($body);
+				}
+				else if ($vcard_attribute === "bday" && !empty($card[$vcard_attribute]))
+				{
+					$tz = date_default_timezone_get();
+					date_default_timezone_set('UTC');
+					$message->$ms_attribute = strtotime($card[$vcard_attribute]);
+					date_default_timezone_set($tz);
+				}
+				else
+				{
+					$message->$ms_attribute = $card[$vcard_attribute];
+				}
+			}
+		}
+
+		if ( isset($card['nickname']) && !empty($card['nickname']) && is_array($card['nickname']) )
+		{
+			$message->nickname = $card['nickname'][0];
+		}
+		if ( isset($card['categories']) && !empty($card['categories']) )
+		{
+			$message->categories = implode(',', $card['categories']);
+			$itemTagNames = array();
+			for ($i=0;$i<count($card['categories']);$i++) {
+				//print $card['categories'][$i] ."\n";
+				$itemTagNames[] = $card['categories'][$i];
+			}
+			//print "message->categories=". $card['categories'] ."\n";
+			$message->categories = $itemTagNames;
+		}
+
+		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->_ParseVCardToAS(vCard fileas [%s])", $message->fileas));
+		return $message;
+	}
+
+	/**
+	 * Generate a VCard from a SyncContact(Exception).
+	 * @param string $data
+	 * @param string $id
+	 * @return VCard
+	 */
+	private function _ParseASCardToVCard($message, $id)
+	{
+		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->_ParseASCardToVCard()"));
+
+		$mapping = array(
+			'fileas' => 'FN',
+			'lastname;firstname' => 'N',
+			'nickname' => 'NICKNAME',
+			'homephonenumber' => 'TEL;TYPE=home',
+			'mobilephonenumber' => 'TEL;TYPE=cell',
+			'businessphonenumber' => 'TEL;TYPE=work',
+			'businessfaxnumber' => 'TEL;TYPE=fax',
+			'pagernumber' => 'TEL;TYPE=pager',
+			'email1address' => 'EMAIL;TYPE=work',
+			'email2address' => 'EMAIL;TYPE=home',
+			//'webpage' => 'URL;TYPE=home', does not exist in ActiveSync
+			'webpage' => 'URL;TYPE=work',
+			//'birthday' => 'BDAY', // handle separetly
+			//'jobtitle' => 'ROLE', // iOS take it as 'TITLE' Does not make sense??
+			'jobtitle' => 'TITLE',
+			'body' => 'NOTE',
+			'companyname;department' => 'ORG',
+			';;businessstreet;businesscity;businessstate;businesspostalcode;businesscountry' => 'ADR;TYPE=work',
+			';;homestreet;homecity;homestate;homepostalcode;homecountry' => 'ADR;TYPE=home',
+			//'picture' => 'PHOTO;BASE64', // handle separetly
+			//'categories' => 'CATEGORIES', // handle separetly, but i am unable to create categories form iOS
+			'imaddress' => 'X-AIM',
+		);
+
+		$data = "BEGIN:VCARD\n";
+		$data .= "UID:". $id .".vcf\n";
+		$data .= "VERSION:3.0\nPRODID:-//". self::SOGOSYNC_PRODID ." ". self::SOGOSYNC_VERSION ."//NONSGML ". self::SOGOSYNC_PRODID . " AddressBook//EN\n";
+
+		foreach($mapping as $ms => $vcard){
+			$val = '';
+			$value = explode(';', $ms);
+			foreach($value as $i)
+			{
+				if(!empty($message->$i))
+				{
+					$val .= $message->$i;
+					$val.=';';
+				}
+			}
+			$val = substr($val,0,-1);
+			if(empty($val)) { continue; }
+			$data .= $vcard.":".$val."\n";
+		}
+		if(!empty($message->categories))
+			$data .= "CATEGORIES:".implode(',', $message->categories)."\n";
+		if(!empty($message->picture))
+			// FIXME first line 50 char next one 74
+			// Apparently iOS send the file on BASE64
+			$data .= "PHOTO;ENCODING=BASE64;TYPE=JPEG:".substr(chunk_split($message->picture, 50, "\n "), 0, -1);
+		if(isset($message->birthday))
+			$data .= "BDAY:".date('Y-m-d', $message->birthday)."\n";
+		$data .= "END:VCARD";
+
+		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->_ParseASCardToVCard('vCard[%s]", $data));
+		return $data;
+	}
+
+	/**
+	 * Generate a VCard UID.
+	 * @return UID
+	 */
+	private function generate_uuid()
+	{
+		// Which format?
+		$md5 = md5(uniqid('', true));
+
+		// 20120427T111858Z-6F53-4F561080-F-7B4FC200
+		return strtoupper(gmdate("Ymd\THis\Z") .'-'. substr($md5, 0, 4 ) . '-' .
+			substr($md5, 4, 8) . '-' .
+			substr($md5, 12, 1) . '-' .
+			substr($md5, 14, 8));
+	}
+}
+
 ?>

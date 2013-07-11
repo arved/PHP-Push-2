@@ -1,10 +1,10 @@
-PHP-Push-2-owncloud
+PHP-Push-2
 ========
 
 Description
 -----------
 
-PHP-Push-2-owncloud is a fork of PHP-Push-2 with ownCloud support.
+PHP-Push-2 is Z-Push-2 - Open Source ActiveSync - from SVN upstream with CalDAV and CardDAV backend support.
 
 Features
 --------
@@ -25,7 +25,8 @@ Use combined backends from Z-Push-2 to allow:
 
 Requirements
 -----------
-* A working ownCloud server
+* A working caldav/carddav server (e.g. SOGo,ownCloud,SabreDAV)
+  * Did not test other than SOGo but it should work with any caldav/cardav groupware, feedback are welcome.
 * An ActiveSync compatible mobile device
 	* [Comparison of Exchange ActiveSync clients](http://en.wikipedia.org/wiki/Comparison_of_Exchange_ActiveSync_clients)
 * PHP5 with the following libraries for a Debian/Ubuntu system
@@ -43,13 +44,12 @@ Requirements
 Thanks
 ------
 
-PHP-Push-2-owncloud is possible thanks to the following projects:
+PHP-Push-2 is possible thanks to the following projects:
 
 * [Open Groupware](http://www.sogo.nu/)
 * [Open Source ActiveSync implementation](http://z-push.sourceforge.net/soswp)
 * [CardDAV-PHP](https://github.com/graviox/CardDAV-PHP)
 * [vCard-parser](https://github.com/nuovo/vCard-parser/)
-* [PHP-Push-2] (https://github.com/dupondje/PHP-Push-2)
 
 
 See also
@@ -76,6 +76,13 @@ Libraries used
 	* Thanks to Nuovo for updating his library
 * [CalDAV-Client](http://wiki.davical.org/w/Developer_Setup)
 
+Donate
+------------
+
+[![PayPal - Donate](https://www.paypal.com/en_US/i/btn/btn_donate_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=TMZ6YBPDLAN84&lc=US&item_name=A%20more%20awesome%20PHP-Push-2&currency_code=EUR&bn=PP%2dDonationsBF%3abtn_donate_LG%2egif%3aNonHosted)
+
+We are building PHP-Push-2 in my spare time, so if you want to buy me a coke while I'm coding, that would be awesome!
+
 
 Installation
 ------------
@@ -83,8 +90,8 @@ Installation
 Clone from github:
 
     $ cd /var/www
-    $ git clone https://github.com/arved/PHP-Push-2-owncloud.git
-    $ cd PHP-Push-2-owncloud
+    $ git clone https://github.com/dupondje/PHP-Push-2.git
+    $ cd PHP-Push-2
 
 
 Read the Z-Push install instructions in the INSTALL file, or this document: [Configure Z-Push (Remote ActiveSync for Mobile Devices)](http://doc.zarafa.com/7.0/Administrator_Manual/en-US/html/_zpush.html)
@@ -94,9 +101,9 @@ Note: Z-Push is mean to be use with mod_php, if using FastCGI, additional config
 
 Configuration
 -------------
-If you wan to use the configuration sample to work with ownCloud.
+If you wan to use the configuration sample to work with SOGo online demo.
 
-Those files are pre-configured to work with ownCloud.
+Those files are pre-configured to work with the [SOGo Online Demo](http://www.sogo.nu/english/tour/online_demo.html)
 
 
 File 'config.php' is the original file from Z-Push SVN repository:
@@ -136,7 +143,7 @@ Permission
 
 Test
 ----
-Using a browser, login to https://example.com/Microsoft-Server-ActiveSync
+Using a browser, login to https://sogo.mydomain.com/Microsoft-Server-ActiveSync
 
 You should see a webpage that says "Z-Push - Open Source ActiveSync" with the message "GET not supported."
 
@@ -151,7 +158,7 @@ Update
 ------
 To update to the latest version:
 
-    $ cd /var/www/PHP-Push-2-owncloud
+    $ cd /var/www/PHP-Push-2
     $ git pull
 
 
@@ -165,6 +172,6 @@ Contributing
 5. Create an [Issue][1] with a link to your branch
 6. Or Send me a [Pull Request][2]
 
-[1]: https://github.com/arved/PHP-Push-2-owncloud/issues
-[2]: https://github.com/arved/PHP-Push-2-owncloud/pull/new/master
+[1]: https://github.com/dupondje/PHP-Push-2/issues
+[2]: https://github.com/dupondje/PHP-Push-2/pull/new/master
 
