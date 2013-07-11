@@ -164,6 +164,11 @@
     // If SYNC_FILEAS_COMPANYONLY is selected and company of the contact is not set
     // SYNC_FILEAS_LASTFIRST will be used
     define('FILEAS_ORDER', SYNC_FILEAS_LASTFIRST);
+    
+    // always override the FN value with the value generated in FILEAS_ORDER (true), or 
+    // just create it according to the FILEAS_ORDER rule, if the value is empty (false) 
+    // only for valid for the carddav.php for owncloud
+    define('FILEAS_ALLWAYSOVERRIDE', false);
 
     // Amount of items to be synchronized per request
     // Normally this value is requested by the mobile. Common values are 5, 25, 50 or 100.
