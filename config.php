@@ -163,7 +163,7 @@
     // option is selected for company).
     // If SYNC_FILEAS_COMPANYONLY is selected and company of the contact is not set
     // SYNC_FILEAS_LASTFIRST will be used
-    define('FILEAS_ORDER', SYNC_FILEAS_LASTFIRST);
+    define('FILEAS_ORDER', SYNC_FILEAS_FIRSTLAST);
     
     // always override the FN value with the value generated in FILEAS_ORDER (true), or 
     // just create it according to the FILEAS_ORDER rule, if the value is empty (false) 
