@@ -1272,7 +1272,7 @@ class BackendCardDAV extends BackendDiff implements ISearchProvider {
 */
 // using BuildFileAs($lastname = "", $firstname = "", $middlename = "", $company = "") from utils.php defined in config-php via FILEAS_ORDER
 	if (empty($message->fileas) || FILEAS_ALLWAYSOVERRIDE === true) {
-	 	$data .= 'FN:' . BuildFileAs($message->lastname, $message->firstname, $message->middlename, $message->company). "\n";
+	 	$data .= 'FN:' . Utils::BuildFileAs($message->lastname, $message->firstname, $message->middlename, $message->company). "\n";
 	}
 	else{
 		$data .= 'FN:' . $message->fileas . "\n";
