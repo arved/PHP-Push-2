@@ -126,30 +126,39 @@ class BackendCombinedConfig {
             //login only succeeds if all backend return true on login
             //sending mail: the mail is sent with first backend that is able to send the mail
             'backends' => array(
-/*
-
-                ),
-                'l' => array(
-                    'name' => 'BackendLDAP',
-                    'config' => self::$BackendLDAP_config,
-                ),
-                'd' => array(
+/*                'z' => array(  
+                   'name' => 'BackendZarafa',  
+                   'config' => self::$BackendZarafa_config  
+             ),  
+             'm' => array(  
+                   'name' => 'BackendMaildir',  
+                   'config' => self::$BackendMaildir_config,  
+             ),  
+             'v' => array(  
+                   'name' => 'BackendVCardDir',  
+                   'config' => self::$BackendVCardDir_config,  
+             ),  
+             'l' => array(
+                   'name' => 'BackendLDAP',
+                   'config' => self::$BackendLDAP_config,
+             ),
+             'd' => array(
                     'name' => 'BackendCardDAV',
                     'config' => self::$BackendCardDAV_config,
-                ),
+             ),
 */
-                'i' => array(
-                    'name' => 'BackendIMAP',
-                    'config' => self::$BackendIMAP_config,
-                ),
-                'k' => array(
-                    'name' => 'BackendCardDAV_OC5',
-                    'config' => self::$BackendCardDAV_OC5_config,
-                ),
-                'c' => array(
-                    'name' => 'BackendCalDAV',
-                    'config' => self::$BackendCalDAV_config,
-                ),
+             'i' => array(
+                  'name' => 'BackendIMAP',
+                  'config' => self::$BackendIMAP_config,
+             ),
+             'k' => array(
+                  'name' => 'BackendCardDAV_OC5',
+                  'config' => self::$BackendCardDAV_OC5_config,
+             ),
+             'c' => array(
+                  'name' => 'BackendCalDAV',
+                  'config' => self::$BackendCalDAV_config,
+             ),
             ),
             'delimiter' => '/',
             //force one type of folder to one backend
