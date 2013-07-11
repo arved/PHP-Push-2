@@ -1247,28 +1247,8 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
 	     'imaddress2' => 'IMPP',
 	     'imaddress3' => 'IMPP'
         );
-/* 	$name_fields = array(
-	      'firstname',
-	      'middlename', 
-              'lastname'
-	);
-*/
-	// start baking the vcard 
+// start baking the vcard 
 	$data = "BEGIN:VCARD\nVERSION:3.0\nPRODID:Z-Push\n";
-/*	if (empty($message->$fileas)) {
-		$names = array();
-		foreach ($name_fields as $field) {
-			if (isset($message->$field) && !empty($message->$field))
-				$names[] = $message->$field;
-		}
-		if (count($names) !== 0) {
-			$data .= 'FN:' . implode(' ', $names) . "\n";
-		}
-	}
-	else {
-		$data .= 'FN:' . $message->$fileas . "\n";
-	}
-*/
 // using BuildFileAs($lastname = "", $firstname = "", $middlename = "", $company = "") from utils.php defined in config-php via FILEAS_ORDER
 	if (empty($message->fileas) || FILEAS_ALLWAYSOVERRIDE_OC5 === true) {
 	 	$data .= 'FN:' . BuildFileAs($message->lastname, $message->firstname, $message->middlename, $message->company). "\n";
@@ -1280,7 +1260,7 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
             $adrval = null;
             $adrks = explode(';', $adrk);
             foreach($adrks as $adri){
-                if((!empty($message->$adri)) && ($message->$adri != '')){
+                if((!empty($message->$adri)) && ($messabge->$adri != '')){
                     $adrval .= $this->escape($message->$adri);
 		  }
 		  $adrval.=';';
