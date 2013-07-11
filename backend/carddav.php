@@ -476,16 +476,16 @@ class BackendCardDAV extends BackendDiff implements ISearchProvider {
                 		$this->contactsetag[$id_card] = $vcard->etag->__toString();
             			}
 		}
-	
+	if (empty($this->contactsetag[$id])){
+		return false;
+	}
 // new end
         ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->StatMessage('%s', '%s')", $this->contactsetag[$id], $id));
-
         $message = array();
         $message["mod"] = $this->contactsetag[$id];
         $message["id"] = $id;
         $message["flags"] = 1;
         $message["star"] = 0;
-
         return $message;
     }
 
@@ -1248,15 +1248,15 @@ class BackendCardDAV extends BackendDiff implements ISearchProvider {
 	     'imaddress2' => 'IMPP',
 	     'imaddress3' => 'IMPP'
         );
- 	$name_fields = array(
+/* 	$name_fields = array(
 	      'firstname',
 	      'middlename', 
               'lastname'
 	);
-
+*/
 	// start baking the vcard 
 	$data = "BEGIN:VCARD\nVERSION:3.0\nPRODID:Z-Push\n";
-	if (empty($message->fileas)) {
+/*	if (empty($message->$fileas)) {
 		$names = array();
 		foreach ($name_fields as $field) {
 			if (isset($message->$field) && !empty($message->$field))
@@ -1269,7 +1269,14 @@ class BackendCardDAV extends BackendDiff implements ISearchProvider {
 	else {
 		$data .= 'FN:' . $message->$fileas . "\n";
 	}
-
+*/
+// using BuildFileAs($lastname = "", $firstname = "", $middlename = "", $company = "") from utils.php defined in config-php via FILEAS_ORDER
+	if (empty($message->fileas) || FILEAS_ALLWAYSOVERRIDE === true) {
+	 	$data .= 'FN:' . BuildFileAs($message->lastname, $message->firstname, $message->middlename, $message->company). "\n";
+	}
+	else{
+		$data .= 'FN:' . $message->fileas . "\n";
+	}
         foreach($adrmapping as $adrk => $adrv){
             $adrval = null;
             $adrks = explode(';', $adrk);
