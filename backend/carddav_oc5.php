@@ -697,7 +697,6 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
                 $vcards = false;
                 ZLog::Write(LOGLEVEL_ERROR, sprintf("BackendCardDAV_OC5->GetGALSearchResults : Error in search %s", $e->getMessage()));
             }
-            var_dump($this->server->get_debug());
             if ($vcards === false) {
                 ZLog::Write(LOGLEVEL_ERROR, "BackendCardDAV_OC5->GetGALSearchResults : Error in search query. Search aborted");
                 return false;
