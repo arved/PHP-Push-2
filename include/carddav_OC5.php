@@ -436,7 +436,7 @@ EOFCONTENTSEARCH;
     {
         $response = $this->get(false, true);
         $response = $this->clean_response($response);
-	 ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDav::qoc-carddav.php::do_sync:: clean_response : '$response'"));
+	 ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV::carddav_oc5.php::do_sync:: clean_response : '$response'"));
         try
         {
             $xml = new SimpleXMLElement($response);
@@ -445,7 +445,7 @@ EOFCONTENTSEARCH;
         {
             throw new Exception('The XML response seems to be malformed and can\'t be simplified!', self::EXCEPTION_MALFORMED_XML_RESPONSE, $e);
         }
-	 ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDav::qoc-carddav.php::do_sync:: xml : '$xml'"));        
+	 ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDav::carddav_OC5.php::do_sync:: xml : '$xml'"));        
         $simplified_xml = new XMLWriter();
         $simplified_xml->openMemory();
         $simplified_xml->setIndent(4);
@@ -715,8 +715,8 @@ EOFXMLGETXMLVCARD;
      */
     public function add($vcard, $vcard_id = null)
     {
-	 ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDav::qoc-carddav.php::add:: vcard_id:'$vcard_id'"));
-	 ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDav::qoc-carddav.php::add:: vcard:'$vcard'"));
+	 ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDav::carddav_OC5.php::add:: vcard_id:'$vcard_id'"));
+	 ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDav::carddav_OC5.php::add:: vcard:'$vcard'"));
         if ($vcard_id === null)
         {
             $vcard_id	= $this->generate_vcard_id();
@@ -749,8 +749,8 @@ EOFXMLGETXMLVCARD;
      */
     public function update($vcard, $vcard_id)
     {
-	ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDav::qoc-carddav.php::update:: vcard_id:'$vcard_id'"));
-	ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDav::qoc-carddav.php::update:: vcard:'$vcard'"));
+	ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDav::carddav_OC5.php::update:: vcard_id:'$vcard_id'"));
+	ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDav::carddav_OC5.php::update:: vcard:'$vcard'"));
         try
         {
             return $this->add($vcard, $vcard_id);
@@ -913,10 +913,10 @@ EOFXMLGETXMLVCARD;
      */
     private function query($url, $method, $content = null, $content_type = null)
     {
-        //ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDav::qoc-carddav.php::query:: input url:'$url'"));
-        //ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDav::qoc-carddav.php::query:: input method:'$method'"));
-        //ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDav::qoc-carddav.php::query:: input content:'$content'"));
-        //ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDav::qoc-carddav.php::query:: input content_type:'$content_type'"));
+        //ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDav::carddav_OC5.php::query:: input url:'$url'"));
+        //ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDav::carddav_OC5.php::query:: input method:'$method'"));
+        //ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDav::carddav_OC5.php::query:: input content:'$content'"));
+        //ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDav::carddav_OC5.php::query:: input content_type:'$content_type'"));
 	 $this->curl_init();
         curl_setopt($this->curl, CURLOPT_URL, $url);
         curl_setopt($this->curl, CURLOPT_CUSTOMREQUEST, $method);
@@ -954,9 +954,9 @@ EOFXMLGETXMLVCARD;
         $http_code 			= curl_getinfo($this->curl, CURLINFO_HTTP_CODE);
         $header				= trim(substr($complete_response, 0, $header_size));
         $response			= substr($complete_response, $header_size);
-	 //ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDav::qoc-carddav.php::query:: http_code :'$http_code '"));
-	 //ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDav::qoc-carddav.php::query:: header :'$header '"));
-	 //ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDav::qoc-carddav.php::query:: response:'$response'"));
+	 //ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDav::carddav_OC5.php::query:: http_code :'$http_code '"));
+	 //ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDav::carddav_OC5.php::query:: header :'$header '"));
+	 //ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDav::carddav_OC5.php::query:: response:'$response'"));
 
 
         $return = array(
