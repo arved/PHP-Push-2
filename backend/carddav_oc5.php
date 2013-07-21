@@ -1251,7 +1251,7 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
 	$data = "BEGIN:VCARD\nVERSION:3.0\nPRODID:Z-Push\n";
 // using BuildFileAs($lastname = "", $firstname = "", $middlename = "", $company = "") from utils.php defined in config-php via FILEAS_ORDER
 	if (empty($message->fileas) || FILEAS_ALLWAYSOVERRIDE_OC5 === true) {
-	 	$data .= 'FN:' . BuildFileAs($message->lastname, $message->firstname, $message->middlename, $message->company). "\n";
+	 	$data .= 'FN:' . Utils::BuildFileAs($message->lastname, $message->firstname, $message->middlename, $message->company). "\n";
 	}
 	else{
 		$data .= 'FN:' . $message->fileas . "\n";
@@ -1299,11 +1299,11 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
             $data .= 'BDAY:'.date('Y-m-d', $message->birthday)."\n";
         if(!empty($message->categories))
             $data .= 'CATEGORIES:'.implode(',', $this->escape($message->categories))."\n";
-        if(isset($message->body))
-		$data .= 'NOTE:\n ' . str_replace('\n' , '\n ' , $message->body). "\n ";
+        if(!empty($message->body))
+		$data .= 'NOTE: ' . str_replace('\n' , '\n ' , $message->body). "\n ";
         if(!empty($message->picture)){
-            $data .= 'PHOTO;ENCODING=BASE64;TYPE=JPEG:'."\n ".chunk_split($message->picture, 50, "\n ");
-	     $data .= "\n";
+            $data .= 'PHOTO;ENCODING=BASE64;TYPE=JPEG:'.chunk_split($message->picture, 50, "\n ");
+	    $data .= "\n";
 	 }
         $data .= "\nEND:VCARD";
 
