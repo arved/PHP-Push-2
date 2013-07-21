@@ -76,6 +76,14 @@ Libraries used
 	* Thanks to Nuovo for updating his library
 * [CalDAV-Client](http://wiki.davical.org/w/Developer_Setup)
 
+-Donate
+-------------
+-
+-[![PayPal - Donate](https://www.paypal.com/en_US/i/btn/btn_donate_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=TMZ6YBPDLAN84&lc=US&item_name=A%20more%20awesome%20PHP-Push-2&currency_code=EUR&bn=PP%2dDonationsBF%3abtn_donate_LG%2egif%3aNonHosted)
+-
+-We are building PHP-Push-2 in my spare time, so if you want to buy me a coke while I'm coding, that would be awesome!
+-
+- 
 Installation
 ------------
 
