@@ -1300,7 +1300,7 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
         if(!empty($message->categories))
             $data .= 'CATEGORIES:'.implode(',', $this->escape($message->categories))."\n";
         if(!empty($message->body))
-		$data .= 'NOTE:\n ' . str_replace('\n' , '\n ' , $message->body). "\n "; 
+		$data .= 'NOTE:'."\n " . str_replace('\n' , '\n ' , $message->body). "\n ";
         if(!empty($message->picture)){
      		$data .= 'PHOTO;ENCODING=BASE64;TYPE=JPEG:'."\n ".chunk_split($message->picture, 50, "\n ");
 		$data .= "\n"; 
