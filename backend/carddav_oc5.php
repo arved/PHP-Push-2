@@ -1249,7 +1249,7 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
 	    'imaddress3' => 'IMPP',
 	    'spouse' => 'X-SPOUSE',
 	    'assistantname' => 'X-ASSISTANT',
-	    'ManagerName' => 'X-MANAGER'
+	    'managername' => 'X-MANAGER'
         );
 // start baking the vcard 
 	$data = "BEGIN:VCARD\nVERSION:3.0\nPRODID:PHP-Push-2-owncloud\n";
