@@ -1170,6 +1170,7 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
         if(!empty($vcard['org'][0]['val'][0]))
             $message->companyname = $vcard['org'][0]['val'][0];
         if(!empty($vcard['note'][0]['val'][0])){
+            $vcard['note'][0]['val'][0] = str_replace(array('\:', '\;', '\,', "\n ") , array(':', ';', ',', "\n\r") , $vcard['note'][0]['val'][0]); 
             if (Request::GetProtocolVersion() >= 12.0) {
                 $message->asbody = new SyncBaseBody();
                 $message->asbody->type = SYNC_BODYPREFERENCE_PLAIN;
@@ -1197,7 +1198,7 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
             }
         }
 	 if(!empty($vcard['role'][0]['val'][0]))
-            $message->jobtitle = $vcard['role'][0]['val'][0];//$vcard['title'][0]['val'][0]
+            $message->jobtitle = $vcard['role'][0]['val'][0];
         if(!empty($vcard['url'][0]['val'][0]))
             $message->webpage = $vcard['url'][0]['val'][0];
         if(!empty($vcard['categories'][0]['val']))
@@ -1217,7 +1218,7 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
      */
     private function ParseToVCard($message) {  
 	 $adrmapping = array(
-	     ';;businessstreet;businesscity;businessstate;businesspostalcode;businesscountry' => 'ADR;TYPE=WORK',
+	    ';;businessstreet;businesscity;businessstate;businesspostalcode;businesscountry' => 'ADR;TYPE=WORK',
             ';;homestreet;homecity;homestate;homepostalcode;homecountry' => 'ADR;TYPE=HOME',
             ';;otherstreet;othercity;otherstate;otherpostalcode;othercountry' => 'ADR;TYPE=OTHER'
 	 );  
@@ -1228,7 +1229,7 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
             'email3address' => 'EMAIL;TYPE=OTHER',
             'businessphonenumber' => 'TEL;TYPE=WORK;TYPE=PREF',
             'business2phonenumber' => 'TEL;TYPE=WORK',
-	     'companymainphone' => 'TEL;TYPE=MSG',
+	    'companymainphone' => 'TEL;TYPE=MSG',
             'businessfaxnumber' => 'TEL;TYPE=FAX;TYPE=WORK',
             'homephonenumber' => 'TEL;TYPE=HOME;TYPE=PREF',
             'home2phonenumber' => 'TEL;TYPE=HOME',
@@ -1236,16 +1237,19 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
             'mobilephonenumber' => 'TEL;TYPE=CELL',
             'carphonenumber' => 'TEL;TYPE=CAR',
             'pagernumber' => 'TEL;TYPE=PAGER',
-	     'mms' => 'TEL;TYPE=TEXT',
-	     'radiophonenumber' => 'TEL;TYPE=OTHER',
-	     'assistnamephonenumber' =>  'TEL;TYPE=VOICE',
+	    'mms' => 'TEL;TYPE=TEXT',
+	    'radiophonenumber' => 'TEL;TYPE=OTHER',
+	    'assistnamephonenumber' =>  'TEL;TYPE=VOICE',
             'companyname' => 'ORG',
             'jobtitle' => 'ROLE',
             'webpage' => 'URL',
             'nickname' => 'NICKNAME',
-	     'imaddress' => 'IMPP',
-	     'imaddress2' => 'IMPP',
-	     'imaddress3' => 'IMPP'
+	    'imaddress' => 'IMPP',
+	    'imaddress2' => 'IMPP',
+	    'imaddress3' => 'IMPP',
+	    'spouse' => 'X-SPOUSE',
+	    'assistantname' => 'X-ASSISTANT',
+	    'ManagerName' => 'X-MANAGER'
         );
 // start baking the vcard 
 	$data = "BEGIN:VCARD\nVERSION:3.0\nPRODID:Z-Push\n";
@@ -1295,18 +1299,18 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
                 $data .= $v.':'.$val."\n";
             }
         }
-	 if(isset($message->birthday))
+	if((isset($message->birthday)) && (!empty($message->birthday)))
             $data .= 'BDAY:'.date('Y-m-d', $message->birthday)."\n";
-        if(!empty($message->categories))
+        if((isset($message->categories)) && (!empty($message->categories)))
             $data .= 'CATEGORIES:'.implode(',', $this->escape($message->categories))."\n";
-        if(!empty($message->body))
-		$data .= 'NOTE:'."\n " . str_replace('\n' , '\n ' , $message->body). "\n ";
-        if(!empty($message->picture)){
+        if((isset($message->body)) && (!empty($message->body)))
+ 	 		$data .= 'NOTE:'. str_replace(array(':', ';', ',', "\n", "\r") , array('\:', '\;', '\,', "\n ", "\n ") , $message->body) . "\n "; 
+ 	if((isset($message->picture)) && (!empty($message->picture))){
      		$data .= 'PHOTO;ENCODING=BASE64;TYPE=JPEG:'."\n ".chunk_split($message->picture, 50, "\n ");
 		$data .= "\n"; 
-	 }
-        $data .= "\nEND:VCARD";
+	}
 
+        $data .= "\nEND:VCARD";
 
         // http://en.wikipedia.org/wiki/VCard
         // TODO: add support for v4.0
