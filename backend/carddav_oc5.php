@@ -1304,7 +1304,7 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
         if((isset($message->categories)) && (!empty($message->categories)))
             $data .= 'CATEGORIES:'.implode(',', $this->escape($message->categories))."\n";
         if((isset($message->body)) && (!empty($message->body)))
- 	 		$data .= 'NOTE:'. str_replace(array(':', ';', ',', "\n", "\r") , array('\:', '\;', '\,', "\n ", "\n ") , $message->body) . "\n "; 
+ 	 	$data .= 'NOTE:'. str_replace(array(':', ';', ',', "\n", "\r") , array('\:', '\;', '\,', "\n ", "\n ") , $message->body) . "\n "; 
  	if((isset($message->picture)) && (!empty($message->picture))){
      		$data .= 'PHOTO;ENCODING=BASE64;TYPE=JPEG:'."\n ".chunk_split($message->picture, 50, "\n ");
 		$data .= "\n"; 
