@@ -863,6 +863,7 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
      */
     private function unescape($data){
         $data = str_replace(array('\\\\', '\\;', '\\,', '\\n','\\N'),array('\\', ';', ',', "\n", "\n"),$data);
+        $data = str_replace("\n", "\r\n", $data);
         return $data;
     }
     
@@ -895,7 +896,6 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
 
         $data = str_replace("\x00", '', $data);
         $data = str_replace("\r\n", "\n", $data);
-        $data = str_replace("\r", "\n", $data);
         $data = preg_replace('/(\n)([ \t])/i', '', $data);
 
         $lines = explode("\n", $data);
@@ -995,17 +995,6 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
 			}
 		}
 	}
-		
-
-/*
-	 if(isset($vcard['email'][0]['val'][0]))
-            $message->email1address = $vcard['email'][0]['val'][0];
-        if(isset($vcard['email'][1]['val'][0]))
-            $message->email2address = $vcard['email'][1]['val'][0];
-        if(isset($vcard['email'][2]['val'][0]))
-            $message->email3address = $vcard['email'][2]['val'][0];
-*/
-
         if(isset($vcard['tel'])){
             foreach($vcard['tel'] as $tel) {
                 if(is_array($tel['type'])){
@@ -1170,11 +1159,10 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
         if(!empty($vcard['org'][0]['val'][0]))
             $message->companyname = $vcard['org'][0]['val'][0];
         if(!empty($vcard['note'][0]['val'][0])){
-            $vcard['note'][0]['val'][0] = str_replace(array('\:', '\;', '\,', "\n ") , array(':', ';', ',', "\n\r") , $vcard['note'][0]['val'][0]); 
-            if (Request::GetProtocolVersion() >= 12.0) {
+	    if (Request::GetProtocolVersion() >= 12.0) {
                 $message->asbody = new SyncBaseBody();
                 $message->asbody->type = SYNC_BODYPREFERENCE_PLAIN;
-                $message->asbody->data = $vcard['note'][0]['val'][0];
+                $message->asbody->data = str_replace("\n " , "\n" ,$this->unescape($vcard['note'][0]['val'][0]));
                 if ($truncsize > 0 && $truncsize < strlen($message->asbody->data)) {
                     $message->asbody->truncated = 1;
                     $message->asbody->data = Utils::Utf8_truncate($message->asbody->data, $truncsize);
@@ -1186,7 +1174,7 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
                 $message->asbody->estimatedDataSize = strlen($message->asbody->data);                
             }
             else {
-                $message->body = $vcard['note'][0]['val'][0];
+                $message->body = str_replace("\n " , "\n" ,$this->unescape($vcard['note'][0]['val'][0]));
                 if ($truncsize > 0 && $truncsize < strlen($message->body)) {
                     $message->bodytruncated = 1;
                     $message->body = Utils::Utf8_truncate($message->body, $truncsize);
@@ -1203,7 +1191,6 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
             $message->webpage = $vcard['url'][0]['val'][0];
         if(!empty($vcard['categories'][0]['val']))
             $message->categories = $vcard['categories'][0]['val'];
-
         if(!empty($vcard['photo'][0]['val'][0]))
             $message->picture = base64_encode($vcard['photo'][0]['val'][0]);
 
@@ -1264,7 +1251,7 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
             $adrval = null;
             $adrks = explode(';', $adrk);
             foreach($adrks as $adri){
-                if((!empty($message->$adri)) && ($messabge->$adri != '')){
+                if((!empty($message->$adri)) && ($message->$adri != '')){
                     $adrval .= $this->escape($message->$adri);
 		  }
 		  $adrval.=';';
@@ -1300,12 +1287,12 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
             }
         }
 	if((isset($message->birthday)) && (!empty($message->birthday)))
-            $data .= 'BDAY:'.date('Y-m-d', $message->birthday)."\n";
+            	$data .= 'BDAY:'.date('Y-m-d', $message->birthday)."\n";
         if((isset($message->categories)) && (!empty($message->categories)))
-            $data .= 'CATEGORIES:'.implode(',', $this->escape($message->categories))."\n";
+            	$data .= 'CATEGORIES:'.implode(',', $this->escape($message->categories))."\n";
         if((isset($message->body)) && (!empty($message->body)))
- 	 	$data .= 'NOTE:'. str_replace(array(':', ';', ',', "\n", "\r") , array('\:', '\;', '\,', "\n ", "\n ") , $message->body) . "\n "; 
- 	if((isset($message->picture)) && (!empty($message->picture))){
+	    	$data .= 'NOTE:'. str_replace("\n" , "\n " , $this->escape($message->body)) . "\n "; 
+	if((isset($message->picture)) && (!empty($message->picture))){
      		$data .= 'PHOTO;ENCODING=BASE64;TYPE=JPEG:'."\n ".chunk_split($message->picture, 50, "\n ");
 		$data .= "\n"; 
 	}
