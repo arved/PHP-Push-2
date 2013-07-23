@@ -1252,7 +1252,7 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
 	    'ManagerName' => 'X-MANAGER'
         );
 // start baking the vcard 
-	$data = "BEGIN:VCARD\nVERSION:3.0\nPRODID:Z-Push\n";
+	$data = "BEGIN:VCARD\nVERSION:3.0\nPRODID:PHP-Push-2-owncloud\n";
 // using BuildFileAs($lastname = "", $firstname = "", $middlename = "", $company = "") from utils.php defined in config-php via FILEAS_ORDER
 	if (empty($message->fileas) || FILEAS_ALLWAYSOVERRIDE_OC5 === true) {
 	 	$data .= 'FN:' . Utils::BuildFileAs($message->lastname, $message->firstname, $message->middlename, $message->company). "\n";
