@@ -75,7 +75,13 @@ class BackendCombined extends Backend {
         foreach ($this->config['backends'] as $i => $b){
             // load and instatiate backend
             ZPush::IncludeBackend($b['name']);
-            $this->backends[$i] = new $b['name']($b['config']);
+	     try{
+            	$this->backends[$i] = new $b['name']($b['config']);
+	     }
+	     catch (Exception $e){
+		ZLog::Write(LOGLEVEL_ERROR, sprintf("ERROR loading backed '%s%'",$e));
+	     }
+	     ZLog::Write(LOGLEVEL_DEBUG, sprintf("Combined backend '%s' loaded.", ($b['name'])));
         }
         ZLog::Write(LOGLEVEL_INFO, sprintf("Combined %d backends loaded.", count($this->backends)));
     }
@@ -141,7 +147,7 @@ class BackendCombined extends Backend {
      */
     public function Setup($store, $checkACLonly = false, $folderid = false) {
         ZLog::Write(LOGLEVEL_DEBUG, sprintf("Combined->Setup('%s', '%s', '%s')", $store, Utils::PrintAsString($checkACLonly), $folderid));
-        if(!is_array($this->backends)){
+	 if(!is_array($this->backends)){
             return false;
         }
         foreach ($this->backends as $i => $b){
@@ -414,6 +420,9 @@ class BackendCombined extends Backend {
         if($pos === false)
             return false;
         return substr($folderid,0,$pos);
+    }
+    public function GetSupportedASVersion() {
+        return ZPush::ASV_121;
     }
 }
 ?>

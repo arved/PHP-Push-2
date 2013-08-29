@@ -65,6 +65,8 @@ class BackendCombinedConfig {
         'IMAP_INLINE_FORWARD' => IMAP_INLINE_FORWARD,
         // use imap_mail() to send emails (default) - if false mail() is used
         'IMAP_USE_IMAPMAIL' => IMAP_USE_IMAPMAIL,
+	 //entension for external email provider
+	 'IMAP_USERNAMEEXTENSION' => IMAP_USERNAMEEXTENSION,
     );
 
     // *************************
@@ -95,7 +97,9 @@ class BackendCombinedConfig {
         'CARDDAV_PATH_OC5' => CARDDAV_PATH_OC5,
 	 'CARDDAV_PORT_OC5' => CARDDAV_PORT_OC5,
 	 'CARDDAV_CONTACTS_FOLDER_NAME_OC5' => CARDDAV_CONTACTS_FOLDER_NAME_OC5,
-	 'FILEAS_ALLWAYSOVERRIDE_OC5' => FILEAS_ALLWAYSOVERRIDE_OC5,
+	 'CARDDAV_FILEAS_ALLWAYSOVERRIDE_OC5' => CARDDAV_FILEAS_ALLWAYSOVERRIDE_OC5,
+	 'CARDDAV_READONLY_OC5' => CARDDAV_READONLY_OC5,
+	 'CARDDAV_SYNC_ON_PING_OC5' => CARDDAV_SYNC_ON_PING_OC5,
     );
 
     // *************************
@@ -116,7 +120,7 @@ class BackendCombinedConfig {
      *
      * @access public
      * @return array
-     *
+    *
      */
     public static function GetBackendCombinedConfig() {
         //use a function for it because php does not allow
@@ -126,39 +130,30 @@ class BackendCombinedConfig {
             //login only succeeds if all backend return true on login
             //sending mail: the mail is sent with first backend that is able to send the mail
             'backends' => array(
-/*                'z' => array(  
-                   'name' => 'BackendZarafa',  
-                   'config' => self::$BackendZarafa_config  
-             ),  
-             'm' => array(  
-                   'name' => 'BackendMaildir',  
-                   'config' => self::$BackendMaildir_config,  
-             ),  
-             'v' => array(  
-                   'name' => 'BackendVCardDir',  
-                   'config' => self::$BackendVCardDir_config,  
-             ),  
-             'l' => array(
-                   'name' => 'BackendLDAP',
-                   'config' => self::$BackendLDAP_config,
-             ),
-             'd' => array(
+/*
+
+                ),
+                'l' => array(
+                    'name' => 'BackendLDAP',
+                    'config' => self::$BackendLDAP_config,
+                ),
+                'd' => array(
                     'name' => 'BackendCardDAV',
                     'config' => self::$BackendCardDAV_config,
-             ),
-*/
-             'i' => array(
-                  'name' => 'BackendIMAP',
-                  'config' => self::$BackendIMAP_config,
-             ),
-             'k' => array(
-                  'name' => 'BackendCardDAV_OC5',
-                  'config' => self::$BackendCardDAV_OC5_config,
-             ),
-             'c' => array(
-                  'name' => 'BackendCalDAV',
-                  'config' => self::$BackendCalDAV_config,
-             ),
+                ),
+*/ 
+                'i' => array(
+                    'name' => 'BackendIMAP',
+                    'config' => self::$BackendIMAP_config,
+                ),
+                'c' => array(
+                    'name' => 'BackendCalDAV',
+                    'config' => self::$BackendCalDAV_config,
+                ),
+                'k' => array(
+                    'name' => 'BackendCardDAV_OC5',
+                    'config' => self::$BackendCardDAV_OC5_config,
+		  ),
             ),
             'delimiter' => '/',
             //force one type of folder to one backend
@@ -172,15 +167,15 @@ class BackendCombinedConfig {
                 SYNC_FOLDER_TYPE_TASK => 'c',
                 SYNC_FOLDER_TYPE_APPOINTMENT => 'c',
                 SYNC_FOLDER_TYPE_CONTACT => 'k',
-// 		  SYNC_FOLDER_TYPE_NOTE => '',
-                SYNC_FOLDER_TYPE_JOURNAL => 'c',
+ 		  //SYNC_FOLDER_TYPE_NOTE => 'c',
+                //SYNC_FOLDER_TYPE_JOURNAL => 'c',
                 SYNC_FOLDER_TYPE_OTHER => 'i',
                 SYNC_FOLDER_TYPE_USER_MAIL => 'i',
                 SYNC_FOLDER_TYPE_USER_APPOINTMENT => 'c',
                 SYNC_FOLDER_TYPE_USER_CONTACT => 'k',
                 SYNC_FOLDER_TYPE_USER_TASK => 'c',
-                SYNC_FOLDER_TYPE_USER_JOURNAL => 'c',
-// 		  SYNC_FOLDER_TYPE_USER_NOTE => '',
+                //SYNC_FOLDER_TYPE_USER_JOURNAL => 'c',
+ 		  //SYNC_FOLDER_TYPE_USER_NOTE => 'c',
                 SYNC_FOLDER_TYPE_UNKNOWN => 'i',
             ),
             //creating a new folder in the root folder should create a folder in one backend

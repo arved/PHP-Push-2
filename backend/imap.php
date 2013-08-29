@@ -77,7 +77,7 @@ class BackendIMAP extends BackendDiff {
      * @throws FatalException   if php-imap module can not be found
      */
     public function Logon($username, $domain, $password) {
-	 $IMAPusername = $username . IMAP_USERNAMEEXTENSION;
+	 $username = $username . IMAP_USERNAMEEXTENSION;
         $this->wasteID = false;
         $this->sentID = false;
         $this->server = "{" . IMAP_SERVER . ":" . IMAP_PORT . "/imap" . IMAP_OPTIONS . "}";
@@ -94,12 +94,12 @@ class BackendIMAP extends BackendDiff {
         /* END fmbiete's contribution r1527, ZP-319 */
 
         // open the IMAP-mailbox
-        $this->mbox = @imap_open($this->server , $IMAPusername, $password, OP_HALFOPEN);
+        $this->mbox = @imap_open($this->server , $username, $password, OP_HALFOPEN);
         $this->mboxFolder = "";
 
         if ($this->mbox) {
-            ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendIMAP->Logon(): User '%s' is authenticated on IMAP",$IMAPusername));
-            $this->username = $IMAPusername;
+            ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendIMAP->Logon(): User '%s' is authenticated on IMAP",$username));
+            $this->username = $username;
             $this->domain = $domain;
             // set serverdelimiter
             $this->serverdelimiter = $this->getServerDelimiter();

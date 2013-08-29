@@ -93,7 +93,7 @@
     define('LOGFILEDIR', '/share/HDA_DATA/var/log/z-push/');
     define('LOGFILE', LOGFILEDIR . 'z-push.log');
     define('LOGERRORFILE', LOGFILEDIR . 'z-push-error.log');
-    define('LOGLEVEL', LOGLEVEL_DEBUG);
+    define('LOGLEVEL', LOGLEVEL_WARN);
     define('LOGAUTHFAIL', true);
 
 
@@ -203,9 +203,6 @@
     // The data providers that we are using (see configuration below)
     define('BACKEND_PROVIDER', "BackendCombined");
 
-
-
-
     // ************************
     //  BackendIMAP settings
     // ************************
@@ -274,6 +271,12 @@
     // always override the FN value with the value generated in FILEAS_ORDER (true), or 
     // just create it according to the FILEAS_ORDER rule, if the value is empty (false) 
     define('FILEAS_ALLWAYSOVERRIDE_OC5', true);
+    // for readonly szenarios set to 'true'
+    define('CARDDAV_READONLY_OC5', false);
+    // set if the CardDAV backend is queried on each AS pin or only on AS FORCECHECK s. AS config
+    // only sync on forcecheck saves server resources. Default is 'true'
+    define('CARDDAV_SYNC_ON_PING_OC5', true);
+
 
     // **********************
     //  BackendCardDAV settings
