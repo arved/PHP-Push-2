@@ -270,7 +270,7 @@
     define('CARDDAV_CONTACTS_FOLDER_NAME_OC5', 'contacts'); //Personal Adress book to sync (only 1)
     // always override the FN value with the value generated in FILEAS_ORDER (true), or 
     // just create it according to the FILEAS_ORDER rule, if the value is empty (false) 
-    define('FILEAS_ALLWAYSOVERRIDE_OC5', true);
+    define('CARDDAV_FILEAS_ALLWAYSOVERRIDE_OC5', true);
     // for readonly szenarios set to 'true'
     define('CARDDAV_READONLY_OC5', false);
     // set if the CardDAV backend is queried on each AS pin or only on AS FORCECHECK s. AS config
