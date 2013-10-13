@@ -869,22 +869,14 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider{
 	     'assistantname' => 'X-ASSISTANT'
         );
 	// start baking the vcard 
-	if (Request::GetProtocolVersion() >= 12.0) {
-		if (isset($message->email1address)){
-			$pos1 = (strpos($message->email1address, '<')+1);
-			$pos2 = (strpos($message->email1address, '>'));
-			$message->email1address = substr($message->email1address, $pos1 , $pos2-$pos1);
-		}
-		if (isset($message->email2address)){
-			$pos1 = (strpos($message->email2address, '<')+1);
-			$pos2 = (strpos($message->email2address, '>'));
-			$message->email2address = substr($message->email2address, $pos1 , $pos2-$pos1);
-		}
-		if (isset($message->email3address)){
-			$pos1 = (strpos($message->email3address, '<')+1);
-			$pos2 = (strpos($message->email3address, '>'));
-			$message->email3address = substr($message->email3address, $pos1 , $pos2-$pos1);
-		}
+	if (isset($message->email1address)){
+		$message->email1address = str_replace('"', "", $message->email1address);
+	}
+	if (isset($message->email2address)){
+		$message->email2address = str_replace('"', "", $message->email2address);
+	}
+	if (isset($message->email3address)){
+		$message->email3address = str_replace('"', "", $message->email3address);
 	}
 	$data = "BEGIN:VCARD\nVERSION:3.0\nPRODID:-//PHP-Push-2-owncloud-/0.3\n";
 	if (empty($message->fileas) || CARDDAV_FILEAS_ALLWAYSOVERRIDE_OC5 === true) {
