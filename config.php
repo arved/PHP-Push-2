@@ -229,7 +229,6 @@
     // loginname is the email address and your CalDAV / CardDAV backend can't handle usernames formated as emailadresses
     // so for login the domainpart of the email address will be added.
     // this has to be reflected in backend/imap.php
-    define ('IMAP_USERNAMEEXTENSION', '');
 
 
     // ************************

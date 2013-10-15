@@ -77,7 +77,6 @@ class BackendIMAP extends BackendDiff {
      * @throws FatalException   if php-imap module can not be found
      */
     public function Logon($username, $domain, $password) {
-	 $username = $username . IMAP_USERNAMEEXTENSION;
         $this->wasteID = false;
         $this->sentID = false;
         $this->server = "{" . IMAP_SERVER . ":" . IMAP_PORT . "/imap" . IMAP_OPTIONS . "}";

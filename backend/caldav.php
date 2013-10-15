@@ -53,107 +53,6 @@ class BackendCalDAV extends BackendDiff {
 	{
 		return true;
 	}
-    /**
-     * Indicates if the backend has a ChangesSink.
-     * A sink is an active notification mechanism which does not need polling.
-     * The CardDAV backend simulates a sink by polling revision dates from the vcards
-     *
-     * @access public
-     * @return boolean
-     */
-    public function HasChangesSink() {
-        return true;
-    }
-
-    /**
-     * The folder should be considered by the sink.
-     * Folders which were not initialized should not result in a notification
-     * of IBackend->ChangesSink().
-     *
-     * @param string        $folderid
-     *
-     * @access public
-     * @return boolean      false if found can not be found
-     */
-    public function ChangesSinkInitialize($folderid) {
-        ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCalDAV->ChangesSinkInitialize(): folderid '%s'", $folderid));
-        $items = array();
-        $this->changessinkinit = true;
-        $items = $this->GetMessageList($folderid);
-        if ($itmes == false) {
-            ZLog::Write(LOGLEVEL_ERROR, sprintf("BackendCalDAV->ChangesSinkInitialize - Error initializing the sink"));
-            return false;
-        }
-        
-        unset($items);
-        
-        return true;
-    }
-
-    /**
-     * The actual ChangesSink.
-     * For max. the $timeout value this method should block and if no changes
-     * are available return an empty array.
-     * If changes are available a list of folderids is expected.
-     *
-     * @param int           $timeout        max. amount of seconds to block
-     *
-     * @access public
-     * @return array
-     */
-    public function ChangesSink($timeout = 30) {
-        $notifications = array();
-        $stopat = time() + $timeout - 1;
-        $changed = false;
-	 $oldcollection = array();
-	 $oldcollection = $this->_collection;
-        //We can get here and the ChangesSink not be initialized yet
-        if (!$this->changessinkinit) {
-            ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCalDAV->ChangesSink - Not initialized ChangesSink, exiting"));
-            return $notifications;
-        }
-        
-        while($stopat > time() && empty($notifications)) {
-            $items = false;
-            try {
-                $vcards = $this->_carddav->get_all_vcards(false, false);
-            }
-            catch (Exception $ex) {
-                ZLog::Write(LOGLEVEL_ERROR, sprintf("BackendCalDAV->ChangesSink - Error resyncing vcards: %s", $ex->getMessage()));
-            }
-            
-            if ($vcards === false) {
-                ZLog::Write(LOGLEVEL_ERROR, sprintf("BackendCalDAV->ChangesSink - Error getting the changes"));
-                return false;
-            }
-            else {
-                $xml_vcards = new SimpleXMLElement($vcards);
-                unset($vcards);
-		  $check = array();
-		  foreach ($xml_vcards->element as $card){
-			$id = (string)$card->id->__toString();
-			$check[$id] = $card;
-		  }
-                if ($check != $this->_collection) {
-                    $changed = true;
-                    ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCalDAV->ChangesSink - Changes detected"));
-                }
-                unset($xml_vcards);
-            }
-            
-            if ($changed) {
-                $notifications[] = $this->foldername;
-            }
-
-            if (empty($notifications)){
-		  // three trials per interval shoud be enough
-                sleep(($timeout-1)/3);
-	     }
-        }
-
-        return $notifications;
-    }    
-
 
 	/**
 	 * CalDAV doesn't need to handle SendMail
@@ -1204,7 +1103,6 @@ class BackendCalDAV extends BackendDiff {
 		$properties = $vtodo->GetProperties();
 		foreach ($properties as $property)
 		{
-
 			switch ($property->Name())
 			{
 				case "SUMMARY":
