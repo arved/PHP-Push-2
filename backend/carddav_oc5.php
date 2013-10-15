@@ -869,35 +869,14 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider{
 	     'assistantname' => 'X-ASSISTANT'
         );
 	// start baking the vcard 
-	$message->email1address = trim($message->email1address,'"');
-	$message->email2address = trim($message->email2address,'"');
-	$message->email3address = trim($message->email3address,'"');
 	if (isset($message->email1address)){
-		if (strpos($message->email1address,"<")!== false){
-			$start = (strpos($message->email1address,"<")+1);
-			$length = (strlen($message->email1address) - strpos($message->email1address,"<") - 2);
-			$message->email1address = substr($message->email1address,$start,$length);
-			$start = 0;
-			$length = 0;
-		}
+		$message->email1address = str_replace('"', "", $message->email1address);
 	}
 	if (isset($message->email2address)){
-		if (strpos($message->email2address,"<")!== false){
-			$start = (strpos($message->email2address,"<")+1);
-			$length = (strlen($message->email2address) - strpos($message->email2address,"<") - 2);
-			$message->email2address = substr($message->email2address,$start,$length);
-			$start = 0;
-			$length = 0;
-		}
+		$message->email2address = str_replace('"', "", $message->email2address);
 	}
 	if (isset($message->email3address)){
-		if (strpos($message->email3address,"<")!== false){
-			$start = (strpos($message->email3address,"<")+1);
-			$length = (strlen($message->email3address) - strpos($message->email3address,"<") - 2);
-			$message->email3address = substr($message->email3address,$start,$length);
-			$start = 0;
-			$length = 0;
-		}
+		$message->email3address = str_replace('"', "", $message->email3address);
 	}
 	$data = "BEGIN:VCARD\nVERSION:3.0\nPRODID:-//PHP-Push-2-owncloud-/0.3\n";
 	if (empty($message->fileas) || CARDDAV_FILEAS_ALLWAYSOVERRIDE_OC5 === true) {
