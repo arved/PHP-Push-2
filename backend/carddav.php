@@ -1,14 +1,18 @@
 <?php
 /***********************************************
 * File      :   CardDAV.php
-* Project   :   SOGoSync
+* part      :   backend
+* Project   :   SOGoSync / OwnCloud
 * Descr     :   This backend is based on
 *               'BackendDiff' and implements an
 *               CardDAV interface
+                e.g. for SabreDAV or OwnCloud
 *
 * Created   :   29.03.2012
 *
 * Copyright 2012 <xbgmsharp@gmail.com>
+* Copyright 2013 arved <arved@github.com>
+* Copyright 2013 Stefan Schallenberg <nafets227@gitgub.com>
 *
 * Modified by Francisco Miguel Biete <fmbiete@gmail.com>
 * Work with DaviCal. Limited to 1 addressbook/principal
@@ -27,8 +31,11 @@ class BackendCardDAV extends BackendDiff {
 	const SOGOSYNC_PRODID = 'SOGoSync';
 
 	private $_carddav;
+	private $_collection = array ();
 	private $_carddav_path;
-	private $_collection = array();
+
+	// Android only supports synchronizing 1 AddressBook per account
+	private $foldername = CARDDAV_CONTACTS_FOLDER_NAME_OC5;
 
 	/**
 	 * Login to the CardDAV backend
@@ -61,7 +68,8 @@ class BackendCardDAV extends BackendDiff {
 	}
 
 	/**
-	 * The connections to CardDAV are always directly closed. So nothing special needs to happen here.
+	 * The connections to CardDAV are always directly closed.
+	 * So nothing special needs to happen here.
 	 * @see IBackend::Logoff()
 	 */
 	public function Logoff()
@@ -88,7 +96,8 @@ class BackendCardDAV extends BackendDiff {
 	}
 
 	/**
-	 * Deletes are always permanent deletes. Messages doesn't get moved.
+	 * Deletes are always permanent deletes.
+	 * Messages doesn't get moved.
 	 * @see IBackend::GetWasteBasket()
 	 */
 	public function GetWasteBasket()
@@ -103,7 +112,7 @@ class BackendCardDAV extends BackendDiff {
 	public function GetFolderList()
 	{
 		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->GetFolderList(): Getting all folders."));
-		
+
 		$folderlist = array();
 		$folderlist[] = $this->StatFolder(CARDDAV_PRINCIPAL);
 
@@ -118,11 +127,11 @@ class BackendCardDAV extends BackendDiff {
 	{
 		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->GetFolder('%s')", $id));
 		
-		$folder = new SyncFolder();
-		$folder->serverid = CARDDAV_PRINCIPAL;
-		$folder->displayname = "CardDAV AddressBook";
-		$folder->parentid = "0";
-		$folder->type = SYNC_FOLDER_TYPE_USER_CONTACT;
+			$folder = new SyncFolder();
+			$folder->serverid = CARDDAV_PRINCIPAL;
+			$folder->displayname = "CardDAV AddressBook";
+			$folder->parentid = "0";
+			$folder->type = SYNC_FOLDER_TYPE_USER_CONTACT;
 
 		return $folder;
 	}
@@ -240,7 +249,7 @@ class BackendCardDAV extends BackendDiff {
 	 */
 	public function StatMessage($folderid, $id)
 	{
-		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->StatMessage('%s','%s')", $folderid,  $id));
+		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->StatMessage('%s','%s')", $folderid, $id));
 
 		// for one vcard ($id) of one addressbook ($folderid)
 		// send the etag as mod and the UUID as id
@@ -285,7 +294,7 @@ class BackendCardDAV extends BackendDiff {
 	 */
 	public function ChangeMessage($folderid, $id, $message)
 	{
-		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->ChangeMessage('%s','%s')", $folderid,  $id));
+		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->ChangeMessage('%s','%s')", $folderid, $id));
 		if (defined(CARDDAV_READONLY) && CARDDAV_READONLY)
 		{
 			return false;
@@ -334,7 +343,7 @@ class BackendCardDAV extends BackendDiff {
 	 */
 	public function DeleteMessage($folderid, $id)
 	{
-		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->DeleteMessage('%s','%s')", $folderid,  $id));
+		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->DeleteMessage('%s','%s')", $folderid, $id));
 		if (defined(CARDDAV_READONLY) && CARDDAV_READONLY)
 		{
 			return false;
@@ -412,6 +421,7 @@ class BackendCardDAV extends BackendDiff {
 			'x-aim' => 'imaddress',
 		);
 
+		// Parse the vcard
 		$message = new SyncContact();
 
 		foreach ($mapping as $vcard_attribute => $ms_attribute)
@@ -532,9 +542,11 @@ class BackendCardDAV extends BackendDiff {
 			'imaddress' => 'X-AIM',
 		);
 
+		// start baking the vcard
 		$data = "BEGIN:VCARD\n";
 		$data .= "UID:". $id .".vcf\n";
-		$data .= "VERSION:3.0\nPRODID:-//". self::SOGOSYNC_PRODID ." ". self::SOGOSYNC_VERSION ."//NONSGML ". self::SOGOSYNC_PRODID . " AddressBook//EN\n";
+		$data .= "VERSION:3.0\n";
+		$data .= "PRODID:-//". self::SOGOSYNC_PRODID ." ". self::SOGOSYNC_VERSION ."//NONSGML ". self::SOGOSYNC_PRODID . " AddressBook//EN\n";
 
 		foreach($mapping as $ms => $vcard){
 			$val = '';
