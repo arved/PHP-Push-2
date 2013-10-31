@@ -1,6 +1,6 @@
 <?php
 /***********************************************
-* File      :   CardDAV.php
+* File      :   CardDAV_OC5.php
 * part      :   backend
 * Project   :   SOGoSync / OwnCloud
 * Descr     :   This backend is based on
@@ -47,7 +47,7 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
 	{
 		// Confirm PHP-CURL Installed; If Not, Exit
 		if (!function_exists("curl_init")) {
-			ZLog::Write(LOGLEVEL_ERROR, sprintf("ERROR: Carddav Backend requires PHP-CURL"));
+			ZLog::Write(LOGLEVEL_ERROR, sprintf("ERROR: Carddav Backend OC5 requires PHP-CURL"));
 			return false;
 		}
 		// Android only supports synchronizing 1 AddressBook per account
@@ -59,14 +59,14 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
 
 		if ($this->_carddav->check_connection())
 		{
-			ZLog::Write(LOGLEVEL_INFO, sprintf("BackendCardDAV->Logon(): User '%s' is authenticated on CardDAV", $username));
+			ZLog::Write(LOGLEVEL_INFO, sprintf("BackendCardDAV_OC5->Logon(): User '%s' is authenticated on CardDAV", $username));
 			$this->url = $url;
 			$this->ReloadCollection ( CARDDAV_CONTACTS_FOLDER_NAME_OC5 );
 			return true;
 		}
 		else
 		{
-			ZLog::Write(LOGLEVEL_INFO, sprintf("BackendCardDAV->Logon(): User '%s' is not authenticated on CardDAV", $username));
+			ZLog::Write(LOGLEVEL_INFO, sprintf("BackendCardDAV_OC5->Logon(): User '%s' is not authenticated on CardDAV", $username));
 			return false;
 		}
 	}
@@ -226,7 +226,7 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
 	 */
 	public function GetFolderList()
 	{
-		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->GetFolderList(): Getting all folders."));
+		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV_OC5->GetFolderList(): Getting all folders."));
 
 		$folderlist = array();
 		$folderlist[] = $this->StatFolder($this->foldername );
@@ -240,7 +240,7 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
 	 */
 	public function GetFolder($id)
 	{
-		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->GetFolder('%s', '%s')", $id, $this->foldername ) );
+		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV_OC5->GetFolder('%s', '%s')", $id, $this->foldername ) );
 
 		if ($id == $this->foldername)
 		{
@@ -263,14 +263,14 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
 	 */
 	public function StatFolder($id)
 	{
-		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->StatFolder('%s')", $id));
+		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV_OC5->StatFolder('%s')", $id));
 
 		$val = $this->GetFolder($id);
 		$folder = array();
 		$folder["id"] = $id;
 		$folder["parent"] = $val->parentid;
 		$folder["mod"] = $val->displayname;
-		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->StatFolder(Abook Id [%s] Abook Name [%s])", $folder["id"], $folder["mod"]));
+		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV_OC5->StatFolder(Abook Id [%s] Abook Name [%s])", $folder["id"], $folder["mod"]));
 		return $folder;
 	}
 
@@ -280,7 +280,7 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
 	 */
 	public function ChangeFolder($folderid, $oldid, $displayname, $type)
 	{
-		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->ChangeFolder('%s','%s','%s','%s')", $folderid, $oldid, $displayname, $type));
+		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV_OC5->ChangeFolder('%s','%s','%s','%s')", $folderid, $oldid, $displayname, $type));
 		return false;
 	}
 
@@ -290,7 +290,7 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
 	 */
 	public function DeleteFolder($id, $parentid)
 	{
-		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->DeleteFolder('%s','%s')", $id, $parentid));
+		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV_OC5->DeleteFolder('%s','%s')", $id, $parentid));
 		return false;
 	}
 
@@ -300,20 +300,20 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
 	 */
 	public function GetMessageList($folderid, $cutoffdate)
 	{
-		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->GetMessageList('%s','%s')", $folderid, $cutoffdate));
+		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV_OC5->GetMessageList('%s','%s')", $folderid, $cutoffdate));
 
 		if ((CARDDAV_SYNC_ON_PING_OC5) || (empty ( $this->_collection ))) {
 			$this->ReloadCollection ( $folderid );
 		}
 		$messagelist = array ();
 		if (empty ( $this->_collection )) {
-			ZLog::Write(LOGLEVEL_WARN, sprintf("BackendCardDAV->GetMessageList(): Empty AddressBook"));
+			ZLog::Write(LOGLEVEL_WARN, sprintf("BackendCardDAV_OC5->GetMessageList(): Empty AddressBook"));
 			return $messagelist;
 		}
 		foreach ( $this->_collection as $vcard )
 		{
 			$id = (string)$vcard->id->__toString();
-			ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->GetMessageList(Add vcard to collection '%s')", $vcard->vcard->__toString()));
+			ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV_OC5->GetMessageList(Add vcard to collection '%s')", $vcard->vcard->__toString()));
 			$messagelist[] = $this->StatMessage($folderid, $id);
 		}
 		return $messagelist;
@@ -327,23 +327,23 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
 	{
 		// for one vcard ($id) of one addressbook ($folderid)
 		// send all vcard details in a SyncContact format
-		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->GetMessage('%s','%s')", $folderid,  $id));
+		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV_OC5->GetMessage('%s','%s')", $folderid,  $id));
 
 		$data = null;
 		// We have an ID and the vcard data
 		if (array_key_exists($id, $this->_collection) && isset($this->_collection[$id]->vcard) && isset ( $this->_collection [$id]->etag ))
 		{
-			ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->GetMessage(array_key_exists and vcard)"));
+			ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV_OC5->GetMessage(array_key_exists and vcard)"));
 		}
 		else
 		{
 			$url = $this->url . $folderid . "/";
 			$this->_carddav->set_url($url);
-			ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->GetMessage('%s')", $url));
+			ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV_OC5->GetMessage('%s')", $url));
 			$xmldata = $this->_carddav->get_xml_vcard($id);
 			if ($xmldata === false)
 			{
-				ZLog::Write(LOGLEVEL_WARN, sprintf("BackendCardDAV->GetMessage(): vCard not found"));
+				ZLog::Write(LOGLEVEL_WARN, sprintf("BackendCardDAV_OC5->GetMessage(): vCard not found"));
 				return false;
 			}
 
@@ -363,7 +363,7 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
 	 */
 	public function StatMessage($folderid, $id)
 	{
-		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->StatMessage('%s','%s')", $folderid, $id));
+		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV_OC5->StatMessage('%s','%s')", $folderid, $id));
 
 		// for one vcard ($id) of one addressbook ($folderid)
 		// send the etag as mod and the UUID as id
@@ -373,17 +373,17 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
 		// We have an ID and no vcard data
 		if (array_key_exists($id, $this->_collection) && isset($this->_collection[$id]->id) && isset($this->_collection[$id]->etag))
 		{
-			ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->StatMessage(array_key_exists)"));
+			ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV_OC5->StatMessage(array_key_exists)"));
 		}
 		else
 		{
 			$url = $this->url . $folderid . "/";
 			$this->_carddav->set_url($url);
-			ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->StatMessage('%s')", $url));
+			ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV_OC5->StatMessage('%s')", $url));
 			$xmldata = $this->_carddav->get_xml_vcard($id);
 			if ($xmldata === false)
 			{
-				ZLog::Write(LOGLEVEL_WARN, sprintf("BackendCardDAV->StatMessage(): VCard not found"));
+				ZLog::Write(LOGLEVEL_WARN, sprintf("BackendCardDAV_OC5->StatMessage(): VCard not found"));
 				return false;
 			}
 			$xmlvcard = new SimpleXMLElement($xmldata);
@@ -391,10 +391,10 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
 			{
 				$this->_collection[$id] = $vcard;
 			}
-			ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->StatMessage(get_xml_vcard true)"));
+			ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV_OC5->StatMessage(get_xml_vcard true)"));
 		}
 		$data = $this->_collection[$id];
-		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->StatMessage(id '%s', mod '%s')", $data->id->__toString(), $data->etag->__toString()));
+		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV_OC5->StatMessage(id '%s', mod '%s')", $data->id->__toString(), $data->etag->__toString()));
 		$message = array();
 		$message['id'] = (string)$data->id->__toString();
 		$message['flags'] = "1";
@@ -450,17 +450,18 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
 	 */
 	public function DeleteMessage($folderid, $id)
 	{
-		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->DeleteMessage('%s','%s')", $folderid, $id));
+		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV_OC5->DeleteMessage('%s','%s')", $folderid, $id));
 		if (! defined(CARDDAV_READONLY_OC5 ))
 		{
 			define ( CARDDAV_READONLY_OC5, 'false' );
 		}
-		if (CARDDAV_READONLY_OC5) {
+		if (CARDDAV_READONLY_OC5)
+		{
 			return false;
 		}
 		$url = $this->url . $folderid . "/";
 		$this->_carddav->set_url($url);
-		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV->DeleteMessage('%s')", $url));
+		ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendCardDAV_OC5->DeleteMessage('%s')", $url));
 		unset ( $this->_collection [$id] );
 		return $this->_carddav->delete($id);
 	}
@@ -473,6 +474,8 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
 	{
 		return false;
 	}
+	
+	
 	/**
 	 * Disconnects from CardDAV
 	 *
@@ -999,19 +1002,22 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
 				'assistantname' => 'X-ASSISTANT' 
 		);
 		// correcting EMail adress formats
-		$message->email1address = trim ( $message->email1address, '"' );
-		$message->email2address = trim ( $message->email2address, '"' );
-		$message->email3address = trim ( $message->email3address, '"' );
-		if (isset ( $message->email1address )) {
-			if (strpos ( $message->email1address, "<" ) !== false) {
-				$start = (strpos ( $message->email1address, "<" ) + 1);
-				$length = (strlen ( $message->email1address ) - strpos ( $message->email1address, "<" ) - 2);
+		$message->email1address = trim($message->email1address, '"');
+		$message->email2address = trim($message->email2address, '"');
+		$message->email3address = trim($message->email3address, '"');
+		if (isset($message->email1address))
+		{
+			if (strpos($message->email1address, "<" ) !== false)
+				{
+				$start = (strpos($message->email1address, "<") + 1);
+				$length = (strlen($message->email1address ) - strpos($message->email1address, "<") - 2);
 				$message->email1address = substr ( $message->email1address, $start, $length );
 				$start = 0;
 				$length = 0;
 			}
 		}
-		if (isset ( $message->email2address )) {
+		if (isset ( $message->email2address ))
+		{
 			if (strpos ( $message->email2address, "<" ) !== false) {
 				$start = (strpos ( $message->email2address, "<" ) + 1);
 				$length = (strlen ( $message->email2address ) - strpos ( $message->email2address, "<" ) - 2);
@@ -1020,8 +1026,10 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
 				$length = 0;
 			}
 		}
-		if (isset ( $message->email3address )) {
-			if (strpos ( $message->email3address, "<" ) !== false) {
+		if (isset ( $message->email3address ))
+		{
+			if (strpos ( $message->email3address, "<" ) !== false)
+			{
 				$start = (strpos ( $message->email3address, "<" ) + 1);
 				$length = (strlen ( $message->email3address ) - strpos ( $message->email3address, "<" ) - 2);
 				$message->email3address = substr ( $message->email3address, $start, $length );
@@ -1036,18 +1044,23 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
 		$data .= "PRODID:-//PHP-Push-2-owncloud-/0.3\n";
 
 		if (empty ( $message->fileas ) || CARDDAV_FILEAS_ALLWAYSOVERRIDE_OC5 === true) {
-			if (empty ( $message->company )) {
+			if (empty ( $message->company ))
+			{
 				$message->company = '';
 			}
 			$data .= 'FN:' . Utils::BuildFileAs ( $message->lastname, $message->firstname, $message->middlename, $message->company ) . "\n";
-		} else {
+		} 
+		else
+		{
 			$data .= 'FN:' . $message->fileas . "\n";
 		}
 
-		foreach($adrmapping as $adrk => $adrv ) {
+		foreach($adrmapping as $adrk => $adrv )
+		{
 			$adrval = null;
 			$adrks = explode(';', $adrk);
-			foreach ( $adrks as $adri ) {
+			foreach ( $adrks as $adri )
+			{
 				if ((! empty ( $message->$adri )) && ($message->$adri != '')) {
 					$adrval .= $this->escape ( $message->$adri );
 				}
@@ -1055,52 +1068,73 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
 			}
 			if ((empty ( $adrval )) || (str_replace ( ';', '', $adrval ) == ''))
 				continue;
+			
 			$adrval = substr ( $adrval, 0, - 1 );
-			if (strlen ( $adrval ) > 50) {
+			if (strlen ( $adrval ) > 50)
+			{
 				$data .= $adrv . ":\n " . chunk_split ( $adrval, 50, "\n " );
 				$data .= "\n";
-			} else {
+			}
+			else
+			{
 				$data .= $adrv . ':' . $adrval . "\n";
 			}
 		}
-		foreach ( $mapping as $k => $v ) {
+		foreach ( $mapping as $k => $v )
+		{
 			$val = null;
 			$ks = explode ( ';', $k );
 			foreach ( $ks as $i ) {
-				if ((! empty ( $message->$i )) && ($message->$i != '')) {
+				if ((! empty ( $message->$i )) && ($message->$i != ''))
+				{
 					$val .= $this->escape ( $message->$i );
 					$val .= ';';
 				}
 			}
 			if (empty ( $val ))
 				continue;
+			
 			$val = substr ( $val, 0, - 1 );
-			if (strlen ( $val ) > 50) {
+			if (strlen ( $val ) > 50)
+			{
 				$data .= $v;
 				$data .= ":\n " . chunk_split ( $val, 50, "\n " );
 				$data .= "\n";
-			} else {
+			}
+			else
+			{
 				$data .= $v . ':' . $val . "\n";
 			}
 		}
 		if ((isset ( $message->birthday )) && (! empty ( $message->birthday )))
 			$data .= 'BDAY:' . date ( 'Y-m-d', $message->birthday ) . "\n";
+		
 		if ((isset ( $message->categories )) && (! empty ( $message->categories )))
 			$data .= 'CATEGORIES:' . implode ( ',', $this->escape ( $message->categories ) ) . "\n";
-		if (Request::GetProtocolVersion () >= 12.0) {
-			if ((isset ( $message->asbody->data )) && (! empty ( $message->asbody->data ))) {
-				if ($message->asbody->type == SYNC_BODYPREFERENCE_HTML) {
+		
+		if (Request::GetProtocolVersion () >= 12.0)
+		{
+			if ((isset ( $message->asbody->data )) && (! empty ( $message->asbody->data )))
+			{
+				if ($message->asbody->type == SYNC_BODYPREFERENCE_HTML)
+				{
 					$data .= 'NOTE:' . str_replace ( "\n", "\n ", $this->escape ( Utils::ConvertHtmlToText ( $message->asbody->data ) ) ) . "\n ";
-				} else {
+				}
+				else
+				{
 					$data .= 'NOTE:' . str_replace ( "\n", "\n ", $this->escape ( $message->asbody->data ) ) . "\n ";
 				}
 			}
-		} else {
-			if ((isset ( $message->body )) && (! empty ( $message->body ))) {
+		}
+		else
+		{
+			if ((isset ( $message->body )) && (! empty ( $message->body )))
+			{
 				$data .= 'NOTE:' . str_replace ( "\n", "\n ", $this->escape ( $message->body ) ) . "\n ";
 			}
 		}
-		if ((isset ( $message->picture )) && (! empty ( $message->picture ))) {
+		if ((isset ( $message->picture )) && (! empty ( $message->picture )))
+		{
 			$data .= 'PHOTO;ENCODING=BASE64;TYPE=JPEG:' . "\n " . chunk_split ( $message->picture, 50, "\n " );
 			$data .= "\n ";
 		}
@@ -1129,9 +1163,11 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
 	 * @access public
 	 * @return boolean
 	 */
-	public function SupportsType($searchtype) {
+	public function SupportsType($searchtype)
+	{
 		return ($searchtype == ISearchProvider::SEARCH_GAL);
 	}
+	
 	
 	/**
 	 * Queries the CardDAV backend
@@ -1144,22 +1180,30 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
 	 * @access public
 	 * @return array search results
 	 */
-	public function GetGALSearchResults($searchquery, $searchrange) {
+	public function GetGALSearchResults($searchquery, $searchrange)
+	{
 		ZLog::Write ( LOGLEVEL_DEBUG, sprintf ( "BackendCardDAV_OC5->GetGALSearchResults(%s, %s)", $searchquery, $searchrange ) );
-		if (isset ( $this->_carddav ) && $this->_carddav !== false) {
-			if (strlen ( $searchquery ) < 5) {
+		if (isset ( $this->_carddav ) && $this->_carddav !== false)
+		{
+			if (strlen ( $searchquery ) < 5)
+			{
 				return false;
 			}
 			
 			ZLog::Write ( LOGLEVEL_DEBUG, sprintf ( "BackendCardDAV_OC5->GetGALSearchResults searching: %s", $this->url ) );
-			try {
+			try
+			{
 				$this->_carddav->enable_debug ();
 				$vcards = $this->_carddav->search_vcards ( str_replace ( "<", "", str_replace ( ">", "", $searchquery ) ), 15, true, false );
-			} catch ( Exception $e ) {
+			}
+			catch ( Exception $e )
+			{
 				$vcards = false;
 				ZLog::Write ( LOGLEVEL_ERROR, sprintf ( "BackendCardDAV_OC5->GetGALSearchResults : Error in search %s", $e->getMessage () ) );
 			}
-			if ($vcards === false) {
+
+			if ($vcards === false)
+			{
 				ZLog::Write ( LOGLEVEL_ERROR, "BackendCardDAV_OC5->GetGALSearchResults : Error in search query. Search aborted" );
 				return false;
 			}
@@ -1172,7 +1216,8 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
 			$rangestart = 0;
 			$rangeend = 50;
 			
-			if ($searchrange != '0') {
+			if ($searchrange != '0')
+			{
 				$pos = strpos ( $searchrange, '-' );
 				$rangestart = substr ( $searchrange, 0, $pos );
 				$rangeend = substr ( $searchrange, ($pos + 1) );
@@ -1190,51 +1235,82 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
 			
 			$i = 0;
 			$rc = 0;
-			foreach ( $xml_vcards->element as $xml_vcard ) {
-				if ($i >= $rangestart && $i < $querylimit) {
+			foreach ( $xml_vcards->element as $xml_vcard )
+			{
+				if ($i >= $rangestart && $i < $querylimit)
+				{
 					$contact = $this->_ParseVCardToAS ( $xml_vcard->vcard->__toString () );
-					if ($contact === false) {
+					if ($contact === false)
+					{
 						ZLog::Write ( LOGLEVEL_ERROR, sprintf ( "BackendCardDAV_OC5->GetGALSearchResults : error converting vCard to AS contact\n%s\n", $xml_vcard->vcard->__toString () ) );
-					} else {
+					}
+					else
+					{
 						$items [$rc] [SYNC_GAL_EMAILADDRESS] = $contact->email1address;
-						if (isset ( $contact->fileas )) {
+						if (isset ( $contact->fileas ))
+						{
 							$items [$rc] [SYNC_GAL_DISPLAYNAME] = $contact->fileas;
-						} else if (isset ( $contact->firstname ) || isset ( $contact->middlename ) || isset ( $contact->lastname )) {
+						}
+						else if (isset ( $contact->firstname ) || isset ( $contact->middlename ) || isset ( $contact->lastname ))
+						{
 							$items [$rc] [SYNC_GAL_DISPLAYNAME] = $contact->firstname . (isset ( $contact->middlename ) ? " " . $contact->middlename : "") . (isset ( $contact->lastname ) ? " " . $contact->lastname : "");
-						} else {
+						}
+						else
+						{
 							$items [$rc] [SYNC_GAL_DISPLAYNAME] = $contact->email1address;
 						}
-						if (isset ( $contact->firstname )) {
+						
+						if (isset ( $contact->firstname ))
+						{
 							$items [$rc] [SYNC_GAL_FIRSTNAME] = $contact->firstname;
-						} else {
+						}
+						else
+						{
 							$items [$rc] [SYNC_GAL_FIRSTNAME] = "";
 						}
-						if (isset ( $contact->lastname )) {
+						
+						if (isset ( $contact->lastname ))
+						{
 							$items [$rc] [SYNC_GAL_LASTNAME] = $contact->lastname;
-						} else {
+						}
+						else
+						{
 							$items [$rc] [SYNC_GAL_LASTNAME] = "";
 						}
-						if (isset ( $contact->business2phonenumber )) {
+						
+						if (isset ( $contact->business2phonenumber ))
+						{
 							$items [$rc] [SYNC_GAL_PHONE] = $contact->business2phonenumber;
 						}
-						if (isset ( $contact->home2phonenumber )) {
+						
+						if (isset ( $contact->home2phonenumber ))
+						{
 							$items [$rc] [SYNC_GAL_HOMEPHONE] = $contact->home2phonenumber;
 						}
-						if (isset ( $contact->mobilephonenumber )) {
+						
+						if (isset ( $contact->mobilephonenumber ))
+						{
 							$items [$rc] [SYNC_GAL_MOBILEPHONE] = $contact->mobilephonenumber;
 						}
-						if (isset ( $contact->title )) {
+						
+						if (isset ( $contact->title ))
+						{
 							$items [$rc] [SYNC_GAL_TITLE] = $contact->title;
 						}
 						if (isset ( $contact->companyname )) {
 							$items [$rc] [SYNC_GAL_COMPANY] = $contact->companyname;
 						}
-						if (isset ( $contact->department )) {
+						
+						if (isset ( $contact->department ))
+						{
 							$items [$rc] [SYNC_GAL_OFFICE] = $contact->department;
 						}
-						if (isset ( $contact->nickname )) {
+						
+						if (isset ( $contact->nickname ))
+						{
 							$items [$rc] [SYNC_GAL_ALIAS] = $contact->nickname;
 						}
+						
 						unset ( $contact );
 						$rc ++;
 					}
@@ -1244,7 +1320,9 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
 			
 			unset ( $xml_vcards );
 			return $items;
-		} else {
+		}
+		else
+		{
 			unset ( $xml_vcards );
 			return false;
 		}
@@ -1257,7 +1335,8 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
 	 *
 	 * @return array
 	 */
-	public function GetMailboxSearchResults($cpo) {
+	public function GetMailboxSearchResults($cpo)
+	{
 		return false;
 	}
 	
@@ -1268,7 +1347,8 @@ class BackendCardDAV_OC5 extends BackendDiff implements ISearchProvider {
 	 *
 	 * @return boolean
 	 */
-	public function TerminateSearch($pid) {
+	public function TerminateSearch($pid)
+	{
 		return true;
 	}
 }
